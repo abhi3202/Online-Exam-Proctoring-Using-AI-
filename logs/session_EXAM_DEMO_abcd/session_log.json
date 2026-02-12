@@ -1,0 +1,284 @@
+{
+  "student_id": "abcd",
+  "exam_id": "EXAM_DEMO",
+  "session_start": "2026-02-12T04:51:20.194173",
+  "session_end": "2026-02-12T04:54:58.790496",
+  "total_frames": 14,
+  "violation_summary": {
+    "total_violations": 36,
+    "by_severity": {
+      "CRITICAL": 2,
+      "HIGH": 14,
+      "MEDIUM": 20,
+      "LOW": 0
+    },
+    "violation_rate": 2.5714285714285716
+  },
+  "violation_history": [
+    {
+      "timestamp": "2026-02-12T04:51:49.025459",
+      "violation": "UNKNOWN_PERSON",
+      "severity": "HIGH"
+    },
+    {
+      "timestamp": "2026-02-12T04:51:49.040011",
+      "violation": "LOUD_AUDIO",
+      "severity": "MEDIUM",
+      "audio_label": null,
+      "audio_metrics": {
+        "db": 37.27908958220424,
+        "spectral_flatness": 0.7070722317515813
+      }
+    },
+    {
+      "timestamp": "2026-02-12T04:51:49.040011",
+      "violation": "MULTIPLE_VOICES",
+      "severity": "MEDIUM",
+      "audio_label": null,
+      "audio_metrics": {
+        "db": 37.27908958220424,
+        "spectral_flatness": 0.7070722317515813
+      }
+    },
+    {
+      "timestamp": "2026-02-12T04:52:05.777966",
+      "violation": "UNKNOWN_PERSON",
+      "severity": "HIGH"
+    },
+    {
+      "timestamp": "2026-02-12T04:52:05.788108",
+      "violation": "LOUD_AUDIO",
+      "severity": "MEDIUM",
+      "audio_label": null,
+      "audio_metrics": {
+        "db": 38.22448497154021,
+        "spectral_flatness": 0.6585991581885713
+      }
+    },
+    {
+      "timestamp": "2026-02-12T04:52:20.885202",
+      "violation": "UNKNOWN_PERSON",
+      "severity": "HIGH"
+    },
+    {
+      "timestamp": "2026-02-12T04:52:20.959921",
+      "violation": "LOUD_AUDIO",
+      "severity": "MEDIUM",
+      "audio_label": null,
+      "audio_metrics": {
+        "db": 38.43295853701444,
+        "spectral_flatness": 0.6672914866678068
+      }
+    },
+    {
+      "timestamp": "2026-02-12T04:52:36.076846",
+      "violation": "UNKNOWN_PERSON",
+      "severity": "HIGH"
+    },
+    {
+      "timestamp": "2026-02-12T04:52:36.081920",
+      "violation": "LOUD_AUDIO",
+      "severity": "MEDIUM",
+      "audio_label": null,
+      "audio_metrics": {
+        "db": 40.28401422808087,
+        "spectral_flatness": 0.7569743278487513
+      }
+    },
+    {
+      "timestamp": "2026-02-12T04:52:36.081920",
+      "violation": "MULTIPLE_VOICES",
+      "severity": "MEDIUM",
+      "audio_label": null,
+      "audio_metrics": {
+        "db": 40.28401422808087,
+        "spectral_flatness": 0.7569743278487513
+      }
+    },
+    {
+      "timestamp": "2026-02-12T04:52:51.105884",
+      "violation": "UNKNOWN_PERSON",
+      "severity": "HIGH"
+    },
+    {
+      "timestamp": "2026-02-12T04:52:51.112889",
+      "violation": "LOUD_AUDIO",
+      "severity": "MEDIUM",
+      "audio_label": null,
+      "audio_metrics": {
+        "db": 41.373973628649466,
+        "spectral_flatness": 0.7907088554680758
+      }
+    },
+    {
+      "timestamp": "2026-02-12T04:52:51.112889",
+      "violation": "MULTIPLE_VOICES",
+      "severity": "MEDIUM",
+      "audio_label": null,
+      "audio_metrics": {
+        "db": 41.373973628649466,
+        "spectral_flatness": 0.7907088554680758
+      }
+    },
+    {
+      "timestamp": "2026-02-12T04:53:06.175148",
+      "violation": "UNKNOWN_PERSON",
+      "severity": "HIGH"
+    },
+    {
+      "timestamp": "2026-02-12T04:53:06.183010",
+      "violation": "LOUD_AUDIO",
+      "severity": "MEDIUM",
+      "audio_label": null,
+      "audio_metrics": {
+        "db": 34.09156041786084,
+        "spectral_flatness": 0.5440442219549256
+      }
+    },
+    {
+      "timestamp": "2026-02-12T04:53:20.923220",
+      "violation": "UNKNOWN_PERSON",
+      "severity": "HIGH"
+    },
+    {
+      "timestamp": "2026-02-12T04:53:20.923220",
+      "violation": "LOUD_AUDIO",
+      "severity": "MEDIUM",
+      "audio_label": null,
+      "audio_metrics": {
+        "db": 36.063338994752876,
+        "spectral_flatness": 0.6419129935533061
+      }
+    },
+    {
+      "timestamp": "2026-02-12T04:53:35.725019",
+      "violation": "NO_FACE_DETECTED",
+      "severity": "HIGH"
+    },
+    {
+      "timestamp": "2026-02-12T04:53:35.788315",
+      "violation": "UNKNOWN_PERSON",
+      "severity": "HIGH"
+    },
+    {
+      "timestamp": "2026-02-12T04:53:35.794324",
+      "violation": "LOUD_AUDIO",
+      "severity": "MEDIUM",
+      "audio_label": null,
+      "audio_metrics": {
+        "db": 37.46729930151942,
+        "spectral_flatness": 0.6901115668194648
+      }
+    },
+    {
+      "timestamp": "2026-02-12T04:53:51.234991",
+      "violation": "LOOKING_AWAY",
+      "severity": "MEDIUM"
+    },
+    {
+      "timestamp": "2026-02-12T04:53:51.234991",
+      "violation": "UNKNOWN_PERSON",
+      "severity": "HIGH"
+    },
+    {
+      "timestamp": "2026-02-12T04:53:51.248158",
+      "violation": "LOUD_AUDIO",
+      "severity": "MEDIUM",
+      "audio_label": null,
+      "audio_metrics": {
+        "db": 33.03833075560558,
+        "spectral_flatness": 0.7258762181393118
+      }
+    },
+    {
+      "timestamp": "2026-02-12T04:53:51.248158",
+      "violation": "MULTIPLE_VOICES",
+      "severity": "MEDIUM",
+      "audio_label": null,
+      "audio_metrics": {
+        "db": 33.03833075560558,
+        "spectral_flatness": 0.7258762181393118
+      }
+    },
+    {
+      "timestamp": "2026-02-12T04:54:06.234369",
+      "violation": "LOOKING_AWAY",
+      "severity": "MEDIUM"
+    },
+    {
+      "timestamp": "2026-02-12T04:54:06.234369",
+      "violation": "UNKNOWN_PERSON",
+      "severity": "HIGH"
+    },
+    {
+      "timestamp": "2026-02-12T04:54:06.247491",
+      "violation": "LOUD_AUDIO",
+      "severity": "MEDIUM",
+      "audio_label": null,
+      "audio_metrics": {
+        "db": 31.04640650756446,
+        "spectral_flatness": 0.6704267138480137
+      }
+    },
+    {
+      "timestamp": "2026-02-12T04:54:21.394157",
+      "violation": "LOOKING_AWAY",
+      "severity": "MEDIUM"
+    },
+    {
+      "timestamp": "2026-02-12T04:54:21.394157",
+      "violation": "UNKNOWN_PERSON",
+      "severity": "HIGH"
+    },
+    {
+      "timestamp": "2026-02-12T04:54:21.405761",
+      "violation": "LOUD_AUDIO",
+      "severity": "MEDIUM",
+      "audio_label": null,
+      "audio_metrics": {
+        "db": 34.553836155145476,
+        "spectral_flatness": 0.6873185102753744
+      }
+    },
+    {
+      "timestamp": "2026-02-12T04:54:36.976718",
+      "violation": "MOBILE_PHONE",
+      "severity": "CRITICAL"
+    },
+    {
+      "timestamp": "2026-02-12T04:54:36.976718",
+      "violation": "UNKNOWN_PERSON",
+      "severity": "HIGH"
+    },
+    {
+      "timestamp": "2026-02-12T04:54:36.988072",
+      "violation": "LOUD_AUDIO",
+      "severity": "MEDIUM",
+      "audio_label": null,
+      "audio_metrics": {
+        "db": 33.61439636625618,
+        "spectral_flatness": 0.6578570055034967
+      }
+    },
+    {
+      "timestamp": "2026-02-12T04:54:51.849845",
+      "violation": "MOBILE_PHONE",
+      "severity": "CRITICAL"
+    },
+    {
+      "timestamp": "2026-02-12T04:54:51.849845",
+      "violation": "UNKNOWN_PERSON",
+      "severity": "HIGH"
+    },
+    {
+      "timestamp": "2026-02-12T04:54:51.930257",
+      "violation": "LOUD_AUDIO",
+      "severity": "MEDIUM",
+      "audio_label": null,
+      "audio_metrics": {
+        "db": 34.48274572851224,
+        "spectral_flatness": 0.6376186873010926
+      }
+    }
+  ]
+}

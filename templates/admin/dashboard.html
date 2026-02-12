@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Admin Dashboard</h1>
+
+        <ul>
+            <li><a href="{{ url_for('admin_sessions') }}">View all sessions</a>
+        </li>
+            <li><a href="{{ url_for('admin_reports') }}">Violation reports</a>
+        </li>
+            <li><a href="{{ url_for('admin_students') }}">Registered students</a>
+        </li>
+        </ul>
+
+        <h2>Summary</h2>
+        <table class="table">
+            <tr>
+                <th>Total sessions</th>
+                <th>Total students</th>
+                <th>Total exams</th>
+            </tr>
+            <tr>
+                <td>{{ stats.total_sessions }}</td>
+                <td>{{ stats.unique_students }}</td>
+                <td>{{ stats.unique_exams }}</td>
+            </tr>
+        </table>
+    </div>
+</body>
+</html>
