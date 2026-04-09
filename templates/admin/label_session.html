@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Label Session {{ session_dir }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+
+</head>
+<body>
+    <div style="max-width: 1400px; margin: 0 auto; padding: 20px;">
+        <h1>Label Violations: {{ session_dir }}</h1>
+        <p><strong>Session:</strong> {{ data.session_start }} - {{ data.session_end }} | Total violations: {{ violations|length }}</p>
+        <a href="{{ url_for('admin_label_sessions') }}">← Back to Sessions</a> | 
+        <a href="{{ url_for('admin_metrics_advanced') }}">Advanced Metrics</a>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Type</th>
+                    <th>Severity</th>
+                    <th>Label</th>
+                    <th>Confidence</th>
+                    <th>Notes</th>
+                    <th>Image</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for v in violations %}
+                <tr class="{% if not v.labeled %}unlabeled{% elif not v.human_true %}false-positive{% else %}true-positive{% endif %}">
+                    <td>{{ v.timestamp }}</td>
+                        <td>{{ v.violation_type or v.violation }}</td>
+
+                    <td>{{ v.severity }}</td>
+<td>
+                        {% if v.labeled %}
+                            <span class="label-status {{ 'true-positive' if v.human_true else 'false-positive' }}">
+                                {{ 'TRUE' if v.human_true else 'FALSE' }}
+                            </span>
+                            <br><small>Conf: {{ v.confidence or 'N/A' }} | {{ v.notes or '' }}</small>
+                            <br><button onclick="unlabel('{{ v.timestamp }}')" class="btn-unlabel" style="background: #6b7280; color: white; padding: 4px 8px; font-size: 11px; border: none; border-radius: 3px; cursor: pointer;">Unlabel</button>
+                        {% else %}
+                            <form class="label-form inline-form" data-session="{{ session_dir }}" data-timestamp="{{ v.timestamp }}" data-type="{{ v.violation_type or v.violation }}">
+                                <label>TRUE <input type="radio" name="human_true" value="true"></label>
+                                <label>FALSE <input type="radio" name="human_true" value="false"></label>
+                                <label>Conf: <input type="range" name="confidence" min="0" max="100" value="50"></label>
+                                <input type="text" name="notes" placeholder="Notes (optional)" maxlength="100">
+                                <button type="submit" class="btn-save" style="background: #10b981; color: white; padding: 6px 12px; font-size: 12px; border: none; border-radius: 4px;">Save</button>
+                            </form>
+                        {% endif %}
+                    </td>
+                    <td>{% if v.labeled %}{{ v.confidence }}{% endif %}</td>
+                    <td>{% if v.labeled %}{{ v.notes }}{% endif %}</td>
+                    <td>
+                        {% if v.violations_dir %}
+                            <img src="/static/violations/{{ v.filename }}" class="violation-img" alt="Violation image">
+                        {% endif %}
+                    </td>
+                    <td>{% if v.labeled %}<a href="#">Edit</a>{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <script>
+// Enhanced AJAX labeling
+document.addEventListener('DOMContentLoaded', function() {
+    // Save label
+    document.querySelectorAll('.label-form').forEach(form => {
+        form.onsubmit = async function(e) {
+            e.preventDefault();
+            const formData = new FormData(form);
+            const data = {
+                session_dir: form.dataset.session,
+                violation_timestamp: form.dataset.timestamp,
+                violation_type: form.dataset.type,
+                human_true: form.querySelector('input[name="human_true"]:checked')?.value === 'true',
+                confidence: parseInt(formData.get('confidence')),
+                notes: formData.get('notes')
+            };
+            
+            try {
+                const response = await fetch('/admin/save_label', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                if (result.status === 'success') {
+                    location.reload();
+                } else {
+                    alert('Save failed: ' + (result.message || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('Network error: ' + error.message);
+            }
+        };
+    });
+    
+    // Unlabel
+    window.unlabel = async function(timestamp) {
+        if (!confirm('Unlabel this violation?')) return;
+        
+        try {
+            const response = await fetch(`/admin/unlabel/${encodeURIComponent(timestamp)}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'}
+            });
+            const result = await response.json();
+            if (result.status === 'success') {
+                location.reload();
+            } else {
+                alert('Unlabel failed');
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    };
+    
+    // Bulk reject (FALSE + low confidence)
+    const bulkRejectBtn = document.createElement('button');
+    bulkRejectBtn.textContent = 'Bulk Reject All Unlabeled (FALSE, 20% conf)';
+    bulkRejectBtn.className = 'btn-bulk-reject';
+    bulkRejectBtn.style.css = `
+        background: #ef4444; color: white; padding: 10px 20px; 
+        border: none; border-radius: 6px; cursor: pointer; 
+        margin: 20px 0; font-weight: 600;
+    `;
+    bulkRejectBtn.onclick = async () => {
+        if (!confirm('Mark ALL unlabeled as FALSE (20% confidence)? This reduces FPs fast!')) return;
+        
+        const unlabeled = document.querySelectorAll('.label-form');
+        const promises = Array.from(unlabeled).map(async (form) => {
+            const data = {
+                session_dir: form.dataset.session,
+                violation_timestamp: form.dataset.timestamp,
+                violation_type: form.dataset.type,
+                human_true: false,
+                confidence: 20,
+                notes: 'Bulk FP rejection - low confidence/no image evidence'
+            };
+            
+            try {
+                await fetch('/admin/save_label', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+            } catch (e) {
+                console.error('Bulk label failed:', e);
+            }
+        });
+        
+        await Promise.all(promises);
+        location.reload();
+    };
+    
+    document.querySelector('h1').parentNode.insertBefore(bulkRejectBtn, document.querySelector('table'));
+});
+    </script>
+</body>
+</html>

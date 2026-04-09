@@ -1,14 +1,40 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>Exam Completed</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+{% extends "base.html" %}
+{% block title %}Exam submitted — Proctoring System{% endblock %}
+{% block body_class %}page-centered{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+{% endblock %}
+{% block content %}
+<div class="completed-page">
+    <div class="completed-card">
+        <div class="success-icon animate-pulse" aria-hidden="true">
+            <i class="fas fa-check"></i>
+        </div>
+        <h1>Exam submitted</h1>
+        <p class="text-muted" style="margin-bottom:0;">Your answers were saved successfully.</p>
 
-</head>
-<body>
-    <h1>Exam Completed</h1>
-    <p>Thank you, {{ student_id }}. Your exam {{ exam_id }} has been submitted.</p>
-    <p><a href="{{ url_for('student_profile') }}">Back to Profile</a></p>
-</body>
-</html>
+        <div class="exam-details">
+            <div class="detail-row">
+                <span class="detail-label"><i class="fas fa-user"></i> Student</span>
+                <span class="detail-value">{{ student_id }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label"><i class="fas fa-file-lines"></i> Exam</span>
+                <span class="detail-value">{{ exam_id }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label"><i class="fas fa-clock"></i> Submitted</span>
+                <span class="detail-value">{{ timestamp if timestamp else 'Just now' }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label"><i class="fas fa-circle-check"></i> Status</span>
+                <span class="detail-value"><span class="badge badge-success">Completed</span></span>
+            </div>
+        </div>
+
+        <a href="{{ url_for('student_profile') }}" class="btn-profile">
+            <i class="fas fa-arrow-left"></i> Back to profile
+        </a>
+    </div>
+</div>
+{% endblock %}

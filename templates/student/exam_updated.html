@@ -35,17 +35,17 @@
         .nav-btn-prev:disabled, .nav-btn-next:disabled { opacity: 0.5; cursor: not-allowed; }
         .options { display: flex; flex-direction: column; gap: 15px; }
         .option { padding: 20px; background: white; border: 2px solid #e5e7eb; border-radius: 12px; cursor: pointer; transition: all 0.2s; position: relative; }
-        .option:hover { border-color: #3b82f6; box-shadow: 0 5px 15px rgba(59,130,246,0.1); transform: translateY(-2px); }
-        .option.selected { border-color: #3b82f6 !important; background: #eff6ff !important; box-shadow: 0 0 0 3px rgba(59,130,246,0.2); }
+        .option:hover { border-color: #3b82f6; box-shadow: 0 5px 15px rgba(59, 130, 246, 0.1); transform: translateY(-2px); }
+        .option.selected { border-color: #3b82f6; background: #eff6ff; }
         .option input[type="radio"] { display: none; }
         .proctoring-header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 20px; border-radius: 15px 15px 0 0; text-align: center; font-weight: 600; font-size: 18px; }
         .video-container { background: #000; border-radius: 0 0 15px 15px; overflow: hidden; height: 280px; position: relative; }
         .video-status { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 8px 12px; border-radius: 20px; font-size: 14px; font-weight: 500; }
         .btn-start { width: 100%; padding: 18px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: 600; cursor: pointer; transition: all 0.3s; margin-top: 15px; }
-        .btn-start:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(59,130,246,0.4); }
+        .btn-start:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(59, 130, 246, 0.4); }
         .btn-start:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
         .btn-submit { width: 100%; padding: 20px; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; border-radius: 12px; font-size: 20px; font-weight: 700; cursor: pointer; margin-top: 30px; transition: all 0.3s; }
-        .btn-submit:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 15px 30px rgba(16,185,129,0.4); }
+        .btn-submit:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 15px 30px rgba(16, 185, 129, 0.4); }
         .btn-submit:disabled { background: #9ca3af; cursor: not-allowed; transform: none; }
         @media (max-width: 1024px) { .exam-container { grid-template-columns: 1fr; } }
     </style>
@@ -113,8 +113,7 @@
         let timerInterval = null;
         let proctoringActive = false;
         let videoReady = false;
-        // FIXED: Store shuffled options per question to prevent jumbling
-        let shuffledOptionCache = new Array(TOTAL_QUESTIONS).fill(null);
+        let shuffledQuestions = [];
 
         const questions = [
             {
@@ -122,7 +121,6 @@
                 options: ["Monitor student behavior during online exams", "Grade student answers automatically", "Create exam questions", "Manage student registration"],
                 correctIndex: 0
             },
-            // ... (same 10 questions)
             {
                 question: "Which model detects prohibited objects like phones?",
                 options: ["YOLOv8 nano", "MediaPipe Face Mesh", "RetinaFace", "OpenCV Haar Cascade"],
@@ -181,25 +179,17 @@
         const connectionStatus = document.getElementById('connection-status');
         const proctorStatus = document.getElementById('proctor-status');
 
-        // Fisher-Yates shuffle (deterministic per question when cached)
-        function shuffle(array, seed = null) {
+        // Fisher-Yates shuffle
+        function shuffle(array) {
             const shuffled = [...array];
-            let i = shuffled.length;
-            while (i--) {
+            for (let i = shuffled.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
             }
             return shuffled;
         }
 
-        // FIXED: Get or create shuffled options for question (no re-shuffle)
-        function getShuffledOptions(qIndex) {
-            if (!shuffledOptionCache[qIndex]) {
-                shuffledOptionCache[qIndex] = shuffle(questions[qIndex].options);
-            }
-            return shuffledOptionCache[qIndex];
-        }
-
+        // Generate question navigation
         function createNav() {
             questionNav.innerHTML = '';
             for (let i = 0; i < TOTAL_QUESTIONS; i++) {
@@ -233,34 +223,30 @@
             });
         }
 
-        // FIXED: Render uses cached shuffled options, adds .selected class
         function renderQuestion() {
             const qData = questions[currentQuestion];
-            const shuffledOptions = getShuffledOptions(currentQuestion);
-            const selectedIndex = answers[currentQuestion];
-            
+            const shuffledOptions = shuffle(qData.options);
             questionContainer.innerHTML = `
                 <div class="question-card">
                     <div class="question-header">
-                        <div class="question-number">${currentQuestion + 1}/${TOTAL_QUESTIONS}</div>
+                        <div class="question-number">${currentQuestion + 1}</div>
                         <div class="question-title">${qData.question}</div>
                     </div>
                     <div class="nav-buttons">
                         <button class="nav-btn-prev" onclick="prevQuestion()" ${currentQuestion === 0 ? 'disabled' : ''}>
-                            < Previous
+                            <i class="fas fa-chevron-left"></i> Previous
                         </button>
                         <button class="nav-btn-next" onclick="nextQuestion()" ${currentQuestion === TOTAL_QUESTIONS - 1 ? 'disabled' : ''}>
-                            Next >
+                            Next <i class="fas fa-chevron-right"></i>
                         </button>
                     </div>
                     <div class="options">
                         ${shuffledOptions.map((option, idx) => {
-                            const optLabel = String.fromCharCode(65 + idx); // A,B,C,D
-                            const isSelected = selectedIndex === idx;
+                            const optLabel = String.fromCharCode(65 + idx); // A, B, C, D
                             return `
-                                <div class="option ${isSelected ? 'selected' : ''}" onclick="selectAnswer(${currentQuestion}, ${idx})">
-                                    <span class="option-label">${optLabel}.</span>
-                                    <span class="option-text">${option}</span>
+                                <div class="option" onclick="selectAnswer(${currentQuestion}, ${idx})">
+                                    <input type="radio" id="q${currentQuestion}o${idx}" name="q${currentQuestion}" value="${idx}" ${answers[currentQuestion] === idx ? 'checked' : ''}>
+                                    <label for="q${currentQuestion}o${idx}">${optLabel}. ${option}</label>
                                 </div>
                             `;
                         }).join('')}
@@ -270,26 +256,16 @@
             updateNav();
         }
 
-        // FIXED: No re-render, just update nav + add visual feedback
         function selectAnswer(qIndex, optionIndex) {
             answers[qIndex] = optionIndex;
             updateNav();
-            // Visual feedback without re-shuffling
-            const currentOptions = document.querySelectorAll('.option');
-            currentOptions.forEach((opt, idx) => {
-                opt.classList.toggle('selected', idx === optionIndex);
-            });
-            // Brief highlight
-            const selectedOpt = document.querySelector(`.option:nth-child(${optionIndex + 1})`);
-            if (selectedOpt) {
-                selectedOpt.style.transform = 'scale(1.02)';
-                setTimeout(() => selectedOpt.style.transform = '', 200);
-            }
+            renderQuestion(); // Re-render to update selected state
         }
 
         // Block exam until proctoring
         mainPanel.classList.add('disabled');
 
+        // Proctoring (unchanged)
         startProctorBtn.onclick = async () => {
             startProctorBtn.disabled = true;
             startProctorBtn.textContent = 'Starting...';
@@ -301,26 +277,20 @@
 
                 if (data.status === 'success') {
                     proctorStatus.textContent = 'Active';
-                    videoStatus.textContent = 'Connecting video stream...';
-                    
-                    // FIXED: Proper event order + error recovery
+                    videoStatus.textContent = 'Video ready';
+                    proctorVideo.src = `/video_feed?t=${Date.now()}`;
                     proctorVideo.onload = () => {
-                        videoStatus.textContent = 'Video ready ✓';
+                        videoStatus.textContent = 'Loading video...';
                     };
-                    proctorVideo.onloadeddata = () => {
-                        videoStatus.textContent = 'Stream active';
+                    proctorVideo.onloadstart = () => {
+                        videoStatus.textContent = 'Streaming...';
                     };
                     proctorVideo.onerror = () => {
-                        videoStatus.textContent = 'Stream error - Retrying...';
-                        setTimeout(() => {
-                            proctorVideo.src = `/video_feed?t=${Date.now()}`;
-                        }, 1000);
+                        videoStatus.textContent = 'Camera error - retry';
+                        startProctorBtn.disabled = false;
+                        startProctorBtn.textContent = 'Retry';
                     };
-                    proctorVideo.onabort = proctorVideo.onerror;
-                    
-                    proctorVideo.src = `/video_feed?t=${Date.now()}`;
-                    
-                    setTimeout(() => {  
+                    setTimeout(() => {  // 2s "latency"
                         videoReady = true;
                         connectionStatus.style.display = 'block';
                         proctoringActive = true;
@@ -330,15 +300,15 @@
                         examStartTime = Date.now();
                         timerInterval = setInterval(updateTimer, 1000);
                         submitBtn.disabled = false;
-                        videoStatus.textContent = '✅ Proctoring Active';
-                    }, 2500);
+                        videoStatus.textContent = 'Ready - Exam Started';
+                    }, 2000);
                 } else {
-                    videoStatus.textContent = `Error: ${data.message}`;
+                    videoStatus.textContent = data.message;
                     startProctorBtn.disabled = false;
-                    startProctorBtn.textContent = 'Retry Proctoring';
+                    startProctorBtn.textContent = 'Retry';
                 }
             } catch (e) {
-                videoStatus.textContent = 'Network error - Check connection';
+                videoStatus.textContent = 'Connection failed';
                 startProctorBtn.disabled = false;
                 startProctorBtn.textContent = 'Retry';
             }
@@ -350,20 +320,19 @@
             const remaining = DURATION_MS - elapsed;
             if (remaining <= 0) {
                 timerEl.textContent = '00:00';
-                timerEl.style.background = 'linear-gradient(135deg, #dc2626, #b91c1c)';
+                timerEl.style.color = '#ef4444';
                 clearInterval(timerInterval);
                 submitBtn.disabled = true;
                 mainPanel.classList.add('disabled');
-                setTimeout(() => {
-                    submitExam();
-                }, 1000);
+                alert('Time Up! Auto-submitting.');
+                submitExam();
                 return;
             }
             const mins = Math.floor(remaining / 60000);
             const secs = Math.floor((remaining % 60000) / 1000);
             timerEl.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-            if (remaining < 30000) timerEl.style.background = 'linear-gradient(135deg, #f59e0b, #d97706)';
-            if (remaining < 10000) timerEl.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
+            if (remaining < 30000) timerEl.style.color = '#f59e0b';
+            if (remaining < 10000) timerEl.style.color = '#ef4444';
         }
 
         function submitExam() {
@@ -373,187 +342,24 @@
                 body: JSON.stringify({ answers })
             }).then(() => {
                 window.location.href = `/exam_completed/${studentId}/${examId}`;
-            }).catch(e => alert('Submit failed - ' + e.message));
+            }).catch(e => {
+                alert('Submit failed');
+            });
         }
 
         submitBtn.onclick = submitExam;
 
-        // FIXED: Enhanced tab switch detection (sync with proctoring.js)
+        // Tab switch detection
         document.addEventListener('visibilitychange', () => {
             if (document.hidden && proctoringActive) {
-                violationCounters.tab_switch++;
-                const count = violationCounters.tab_switch;
-                
-                console.log(`🚨 TAB SWITCH #${count} detected`);
-                
-                if (count <= 2) {
-                    fetch(`/log_tab_switch/${studentId}/${examId}`, { 
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({violation: `TAB_SWITCH_${count}`, count: count, warning: true})
-                    });
-                    showKeyboardWarning(`TAB_SWITCH_${count}`);
-                }
-                
-                if (count === 3) {
-                    console.error('🚨 TAB_SWITCH VIOLATION - 3rd offense!');
-                    fetch(`/log_tab_switch/${studentId}/${examId}`, { 
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({violation: 'TAB_SWITCH_VIOLATION', count: 3, critical: true})
-                    });
-                    showCriticalViolation('TAB_SWITCH');
-                }
+                fetch(`/log_tab_switch/${studentId}/${examId}`, { method: 'POST' });
             }
         });
 
-// FIXED: Enhanced security + COPY/PASTE violations
-        let violationCounters = {
-            tab_switch: 0,
-            copy: 0,
-            paste: 0
-        };
-        
-        // Detect copy/paste/keyboard shortcuts
+        // Prevent F12/DevTools
         document.addEventListener('keydown', (e) => {
-            const prohibitedCombos = [
-                {keys: e.ctrlKey && e.key === 'c', violation: 'COPY_SHORTCUT'},
-                {keys: e.ctrlKey && e.key === 'v', violation: 'PASTE_SHORTCUT'},
-                {keys: e.ctrlKey && e.key === 'a', violation: 'SELECT_ALL'},
-                {keys: e.ctrlKey && e.key === 'x', violation: 'CUT_SHORTCUT'},
-                {keys: e.ctrlKey && e.shiftKey && e.key === 'i', violation: 'INSPECT_DEVTOOLS'},
-                {keys: e.key === 'F12', violation: 'DEVTOOLS_F12'},
-                {keys: e.ctrlKey && e.shiftKey && e.key === 'C', violation: 'CONSOLE_CLEAR'},
-                {keys: e.ctrlKey && e.key === 'u', violation: 'VIEW_SOURCE'}
-            ];
-            
-            const violation = prohibitedCombos.find(combo => combo.keys)?.violation;
-            if (violation && proctoringActive) {
-                copyPasteCount++;
-                console.warn(`Violation logged: ${violation} (count: ${copyPasteCount})`);
-                fetch(`/log_tab_switch/${studentId}/${examId}`, { 
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({violation: violation, count: copyPasteCount})
-                }).catch(e => console.error('Violation log failed:', e));
-                
-                // Visual warning
-                showKeyboardWarning(violation);
-            }
-            
-            // Block prohibited keys
-            if (violation) {
-                e.preventDefault();
-                e.stopPropagation();
-                return false;
-            }
-        }, true);
-
-        // Detect paste events
-        document.addEventListener('paste', (e) => {
-            if (proctoringActive) {
-                copyPasteCount++;
-                console.warn('📄 PASTE #1 - logged');
-                fetch(`/log_tab_switch/${studentId}/${examId}`, { 
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({violation: 'PASTE_VIOLATION_1', count: copyPasteCount})
-                }).catch(e => console.error('Paste #1 failed:', e));
-                showKeyboardWarning('PASTE #1');
-                
-                setTimeout(() => {
-                    console.warn('📄 PASTE #2 - SECOND warning');
-                    fetch(`/log_tab_switch/${studentId}/${examId}`, { 
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({violation: 'PASTE_VIOLATION_2', count: copyPasteCount + 0.5})
-                    }).catch(e => console.error('Paste #2 failed:', e));
-                    showKeyboardWarning('PASTE #2');
-                }, 300);
-            }
-            e.preventDefault();
+            if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && e.key === 'I')) e.preventDefault();
         });
-
-        // Detect copy events
-        document.addEventListener('copy', (e) => {
-            if (proctoringActive) {
-                violationCounters.copy++;
-                const count = violationCounters.copy;
-                
-                console.warn(`📋 COPY #${count} detected`);
-                
-                if (count <= 2) {
-                    fetch(`/log_tab_switch/${studentId}/${examId}`, { 
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({violation: `COPY_VIOLATION_${count}`, count: count, warning: true})
-                    });
-                    showKeyboardWarning(`COPY_${count}`);
-                }
-                
-                if (count === 3) {
-                    console.error('🚨 COPY VIOLATION - 3rd offense!');
-                    fetch(`/log_tab_switch/${studentId}/${examId}`, { 
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({violation: 'COPY_VIOLATION', count: 3, critical: true})
-                    });
-                    showCriticalViolation('COPY');
-                }
-            }
-            e.preventDefault();
-        });
-
-        function showKeyboardWarning(violation) {
-            // 1. Top-right popup
-            let popupWarning = document.getElementById('keyboard-warning');
-            if (!popupWarning) {
-                popupWarning = document.createElement('div');
-                popupWarning.id = 'keyboard-warning';
-                popupWarning.style.cssText = `
-                    position: fixed; top: 20px; right: 20px; z-index: 10000;
-                    background: linear-gradient(135deg, #ef4444, #dc2626); color: white;
-                    padding: 16px 24px; border-radius: 12px; box-shadow: 0 8px 24px rgba(239,68,68,0.4);
-                    font-weight: 600; font-size: 16px; backdrop-filter: blur(10px);
-                `;
-                document.body.appendChild(popupWarning);
-            }
-            popupWarning.textContent = `⚠️ VIOLATION: ${violation.toUpperCase()} DETECTED!`;
-            popupWarning.style.animation = 'shake 0.5s, fadeOut 3s forwards';
-            
-            // 2. Exam panel warning banner
-            let examWarning = document.getElementById('exam-warning-banner');
-            if (!examWarning) {
-                examWarning = document.createElement('div');
-                examWarning.id = 'exam-warning-banner';
-                examWarning.style.cssText = `
-                    position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
-                    background: linear-gradient(135deg, #ef4444, #dc2626); color: white;
-                    padding: 12px 24px; text-align: center; font-weight: 700; font-size: 18px;
-                    box-shadow: 0 4px 12px rgba(239,68,68,0.4); transform: translateY(-100%);
-                    transition: transform 0.3s ease;
-                `;
-                document.body.appendChild(examWarning);
-            }
-            examWarning.textContent = `🚨 EXAM WARNING: ${violation.replace('_VIOLATION', '')} DETECTED - Proctor reviewing!`;
-            examWarning.style.transform = 'translateY(0)';
-            
-            // Auto-hide banner after 5s
-            setTimeout(() => {
-                examWarning.style.transform = 'translateY(-100%)';
-            }, 5000);
-        }
-
-        // Add shake/fade animations
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
-            @keyframes fadeOut { to { opacity: 0; transform: translateY(-10px); } }
-        `;
-        document.head.appendChild(style);
-
-        // Context menu block
-        document.addEventListener('contextmenu', e => e.preventDefault());
     </script>
 </body>
 </html>

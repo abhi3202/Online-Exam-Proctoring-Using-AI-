@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block head_extra %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+{% block admin_head_extra %}{% endblock %}
+{% endblock %}
+{% block content %}
+<div class="app-shell">
+    {% include "admin/_sidebar.html" %}
+    <div class="app-main">
+        <header class="app-main-header">
+            {% block admin_header %}
+            <div>
+                <h1>{% block admin_title %}Admin{% endblock %}</h1>
+                <p>{% block admin_subtitle %}{% endblock %}</p>
+            </div>
+            {% block admin_header_extra %}{% endblock %}
+        </header>
+        <div class="app-main-body">
+            {% block admin_body %}{% endblock %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% endblock %}

@@ -1,0 +1,21 @@
+<aside class="app-sidebar" aria-label="Admin navigation">
+    <div class="app-brand">
+        <div class="app-brand-mark"><i class="bi bi-shield-lock"></i></div>
+        <div class="app-brand-title">Proctoring</div>
+        <div class="app-brand-sub">Admin console</div>
+    </div>
+    <nav class="app-nav">
+        <span class="app-nav-section">Overview</span>
+        <a href="{{ url_for('admin_dashboard') }}" class="{{ 'active' if request.endpoint == 'admin_dashboard' else '' }}"><i class="bi bi-grid-1x2-fill"></i> Dashboard</a>
+        <a href="{{ url_for('admin_sessions') }}" class="{{ 'active' if request.endpoint == 'admin_sessions' else '' }}"><i class="bi bi-list-ul"></i> Sessions</a>
+        <a href="{{ url_for('admin_metrics') }}" class="{{ 'active' if request.endpoint in ('admin_metrics', 'admin_metrics_json') else '' }}"><i class="bi bi-activity"></i> Live metrics</a>
+        <a href="/admin/metrics_advanced" class="{{ 'active' if request.endpoint == 'admin_metrics_advanced' else '' }}"><i class="bi bi-graph-up-arrow"></i> Analytics</a>
+        <span class="app-nav-section">Records</span>
+        <a href="{{ url_for('admin_reports') }}" class="{{ 'active' if request.endpoint == 'admin_reports' else '' }}"><i class="bi bi-exclamation-triangle"></i> Violations</a>
+        <a href="{{ url_for('admin_students') }}" class="{{ 'active' if request.endpoint in ('admin_students', 'edit_user_route', 'delete_user_route') else '' }}"><i class="bi bi-people"></i> Users</a>
+        <a href="/admin/label_sessions" class="{{ 'active' if request.endpoint in ('admin_label_sessions', 'admin_label_session') else '' }}"><i class="bi bi-tag"></i> Label data</a>
+    </nav>
+    <div style="padding: 0 1rem; margin-top: auto;">
+        <a href="{{ url_for('logout') }}" class="app-logout" style="width:100%; justify-content:center;"><i class="bi bi-box-arrow-right"></i> Log out</a>
+    </div>
+</aside>

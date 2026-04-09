@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Exam Results - {{ exam_id }} - Admin</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .results-container { max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+        .results-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 2rem; text-align: center; color: white; margin-bottom: 2rem; }
+        .results-header h1 { color: white; margin-bottom: 0.5rem; }
+        .score-card { background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 2rem; margin-bottom: 1.5rem; }
+        .score-display { text-align: center; padding: 2rem; }
+        .score-circle { width: 150px; height: 150px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 0 auto 1.5rem; font-size: 2.5rem; font-weight: 700; }
+        .score-circle.passed { background: linear-gradient(135deg, #48bb78 0%, #2f855a 100%); color: white; }
+        .score-circle.failed { background: linear-gradient(135deg, #f56565 0%, #c53030 100%); color: white; }
+        .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-top: 1.5rem; }
+        .stat-box { background: #f7fafc; border-radius: 8px; padding: 1rem; text-align: center; }
+        .stat-box .value { font-size: 1.75rem; font-weight: 700; color: #2d3748; }
+        .stat-box .label { font-size: 0.75rem; color: #718096; text-transform: uppercase; }
+        .stat-box.correct .value { color: #38a169; }
+        .stat-box.incorrect .value { color: #e53e3e; }
+        .stat-box.unanswered .value { color: #d69e2e; }
+        .answers-section { background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 2rem; }
+        .question-review { background: #f7fafc; border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem; border-left: 4px solid #cbd5e0; }
+        .question-review.correct { border-left-color: #38a169; background: #f0fff4; }
+        .question-review.incorrect { border-left-color: #e53e3e; background: #fff5f5; }
+        .question-review.unanswered { border-left-color: #d69e2e; background: #fffff0; }
+        .violations-section { background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 2rem; margin-top: 1.5rem; }
+        .violations-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+        .violation-stat { background: #f7fafc; border-radius: 8px; padding: 1rem; text-align: center; }
+        .violation-stat .value { font-size: 1.5rem; font-weight: 700; }
+        .violation-stat.critical .value { color: #e53e3e; }
+        .violation-stat.high .value { color: #dd6b20; }
+        .violation-stat.medium .value { color: #d69e2e; }
+        .violation-stat.low .value { color: #38a169; }
+        .btn-back { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; background: #4299e1; color: white; border-radius: 8px; text-decoration: none; }
+        .btn-back:hover { background: #3182ce; color: white; }
+    </style>
+</head>
+<body style="background: #edf2f7; margin: 0;">
+    <div class="results-container">
+        <div class="results-header">
+            <h1><i class="fas fa-clipboard-check"></i> Exam Results</h1>
+            <p>Exam: <strong>{{ exam_id }}</strong> | Student: <strong>{{ student_id }}</strong></p>
+        </div>
+
+        <div class="score-card">
+            <div class="score-display">
+                <!-- Evaluation Status Badge -->
+                {% if score.evaluation_status == 'FLAGGED' %}
+                <div class="badge badge-danger" style="font-size: 1rem; padding: 0.5rem 1rem; margin-bottom: 1rem;">
+                    <i class="fas fa-flag"></i> FLAGGED - Critical Violations Detected
+                </div>
+                {% elif score.evaluation_status == 'WARNING' %}
+                <div class="badge badge-warning" style="font-size: 1rem; padding: 0.5rem 1rem; margin-bottom: 1rem;">
+                    <i class="fas fa-exclamation-triangle"></i> WARNING - Violations Recorded
+                </div>
+                {% else %}
+                <div class="badge badge-success" style="font-size: 1rem; padding: 0.5rem 1rem; margin-bottom: 1rem;">
+                    <i class="fas fa-check-circle"></i> CLEAR - No Violations
+                </div>
+                {% endif %}
+                
+                <div class="score-circle {{ 'passed' if score.passed else 'failed' }}">
+                    <span>{{ score.percentage }}%</span>
+                </div>
+                <div>
+                    {{ 'PASSED' if score.passed else 'FAILED' }} - {{ score.marks_obtained }}/{{ score.total_marks }} marks
+                </div>
+                
+                <!-- Show penalty if any -->
+                {% if score.violation_penalty > 0 %}
+                <div style="margin-top: 1rem; padding: 0.75rem; background: #fff5f5; border-radius: 8px; color: #c53030;">
+                    <i class="fas fa-minus-circle"></i> {{ score.violation_penalty }}% penalty from violations
+                    <br><small>(Raw: {{ score.raw_percentage }}% - {{ score.violation_penalty }}% = Final: {{ score.percentage }}%)</small>
+                </div>
+                {% endif %}
+                
+                <div class="stats-row">
+                    <div class="stat-box correct"><div class="value">{{ score.correct }}</div><div class="label">Correct</div></div>
+                    <div class="stat-box incorrect"><div class="value">{{ score.incorrect }}</div><div class="label">Incorrect</div></div>
+                    <div class="stat-box unanswered"><div class="value">{{ score.unanswered }}</div><div class="label">Not Attempted</div></div>
+                    <div class="stat-box"><div class="value">{{ score.total }}</div><div class="label">Total</div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="answers-section">
+            <h2><i class="fas fa-list-ol"></i> Answer Review</h2>
+            {% for q in questions %}
+            <div class="question-review {{ 'correct' if results[loop.index0].is_correct == true else ('incorrect' if results[loop.index0].is_correct == false else 'unanswered') }}">
+                <div style="display:flex; justify-content:space-between; margin-bottom:0.75rem;">
+                    <strong>Question {{ loop.index }}</strong>
+                    {% if results[loop.index0].is_correct == true %}
+                    <span style="background:#38a169; color:white; padding:2px 8px; border-radius:4px; font-size:0.75rem;"><i class="fas fa-check"></i> Correct</span>
+                    {% elif results[loop.index0].is_correct == false %}
+                    <span style="background:#e53e3e; color:white; padding:2px 8px; border-radius:4px; font-size:0.75rem;"><i class="fas fa-times"></i> Incorrect</span>
+                    {% else %}
+                    <span style="background:#d69e2e; color:white; padding:2px 8px; border-radius:4px; font-size:0.75rem;"><i class="fas fa-minus"></i> Not Attempted</span>
+                    {% endif %}
+                </div>
+                <div style="margin-bottom:0.5rem;">{{ q.text }}</div>
+                {% if results[loop.index0].your_answer is not none %}
+                <div>Your Answer: <strong>{{ q.options[results[loop.index0].your_answer] }}</strong></div>
+                {% else %}
+                <div style="color:#718096;">Not Attempted</div>
+                {% endif %}
+                {% if results[loop.index0].is_correct == false %}
+                <div style="color:#38a169;">Correct Answer: <strong>{{ q.options[results[loop.index0].correct_answer] }}</strong></div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        {% if violations.total > 0 %}
+        <div class="violations-section">
+            <h2><i class="fas fa-exclamation-triangle"></i> Violations During Exam</h2>
+            <div class="violations-summary">
+                <div class="violation-stat critical"><div class="value">{{ violations.critical }}</div><div class="label">Critical</div></div>
+                <div class="violation-stat high"><div class="value">{{ violations.high }}</div><div class="label">High</div></div>
+                <div class="violation-stat medium"><div class="value">{{ violations.medium }}</div><div class="label">Medium</div></div>
+                <div class="violation-stat low"><div class="value">{{ violations.low }}</div><div class="label">Low</div></div>
+            </div>
+        </div>
+        {% else %}
+        <div class="score-card">
+            <div class="score-display">
+                <i class="fas fa-shield-alt" style="font-size:3rem; color:#38a169; margin-bottom:1rem;"></i>
+                <p>No violations recorded during this exam!</p>
+            </div>
+        </div>
+        {% endif %}
+
+        <div style="text-align:center;">
+            <a href="{{ url_for('admin_sessions') }}" class="btn-back">
+                <i class="fas fa-arrow-left"></i> Back to Sessions
+            </a>
+        </div>
+    </div>
+</body>
+</html>
+

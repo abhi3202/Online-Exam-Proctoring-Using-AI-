@@ -1,49 +1,61 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>All Proctoring Sessions</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
-</head>
-<body class="page-center">
-    <div class="container">
-        <h1>All Proctoring Sessions</h1>
-        <p><a href="{{ url_for('admin_dashboard') }}">← Back to dashboard</a></p>
-
+{% extends "admin/base_admin.html" %}
+{% block title %}All sessions — Proctoring System{% endblock %}
+{% block admin_head_extra %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+{% endblock %}
+{% block admin_title %}All sessions{% endblock %}
+{% block admin_subtitle %}Browse and open results for every proctoring session{% endblock %}
+{% block admin_body %}
+<div class="card shadow animate-fadeInUp">
+    <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-table"></i> Session records</h3>
+        <span class="badge badge-primary">{{ sessions|length }} total</span>
+    </div>
+    <div class="table-container">
         <table class="table">
-            <tr>
-                <th>Student ID</th>
-                <th>Exam ID</th>
-                <th>Start</th>
-                <th>End</th>
-                <th>Total violations</th>
-                <th>Critical</th>
-                <th>High</th>
-                <th>Medium</th>
-                <th>Low</th>
-                <th>Details</th>
-            </tr>
-            {% for s in sessions %}
-            <tr>
-                <td>{{ s.student_id }}</td>
-                <td>{{ s.exam_id }}</td>
-                <td>{{ s.session_start }}</td>
-                <td>{{ s.session_end }}</td>
-                <td>{{ s.summary.total_violations }}</td>
-                <td>{{ s.summary.by_severity.CRITICAL }}</td>
-                <td>{{ s.summary.by_severity.HIGH }}</td>
-                <td>{{ s.summary.by_severity.MEDIUM }}</td>
-                <td>{{ s.summary.by_severity.LOW }}</td>
-                <td>
-                    <a href="{{ url_for('admin_reports',
-                                        exam_id=s.exam_id,
-                                        student_id=s.student_id) }}">
-                        View
-                    </a>
-                </td>
-            </tr>
-            {% endfor %}
+            <thead>
+                <tr>
+                    <th>Student</th>
+                    <th>Exam</th>
+                    <th>Start</th>
+                    <th>End</th>
+                    <th>Total</th>
+                    <th>Crit.</th>
+                    <th>High</th>
+                    <th>Med.</th>
+                    <th>Low</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in sessions %}
+                <tr class="animate-fadeIn">
+                    <td><strong>{{ s.student_id }}</strong></td>
+                    <td>{{ s.exam_id }}</td>
+                    <td>{{ s.session_start[:19] if s.session_start else '—' }}</td>
+                    <td>{{ s.session_end[:19] if s.session_end else '—' }}</td>
+                    <td><strong>{{ s.summary.total_violations }}</strong></td>
+                    <td>{% if s.summary.by_severity.CRITICAL > 0 %}<span class="severity-critical">{{ s.summary.by_severity.CRITICAL }}</span>{% else %}0{% endif %}</td>
+                    <td>{% if s.summary.by_severity.HIGH > 0 %}<span class="severity-high">{{ s.summary.by_severity.HIGH }}</span>{% else %}0{% endif %}</td>
+                    <td>{% if s.summary.by_severity.MEDIUM > 0 %}<span class="severity-medium">{{ s.summary.by_severity.MEDIUM }}</span>{% else %}0{% endif %}</td>
+                    <td>{% if s.summary.by_severity.LOW > 0 %}<span class="severity-low">{{ s.summary.by_severity.LOW }}</span>{% else %}0{% endif %}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <a href="{{ url_for('admin_exam_results', exam_id=s.exam_id, student_id=s.student_id) }}" class="btn btn-sm btn-primary" title="Results"><i class="fas fa-clipboard-check"></i></a>
+                            <a href="{{ url_for('admin_reports', exam_id=s.exam_id, student_id=s.student_id) }}" class="btn btn-sm btn-secondary" title="Violations"><i class="fas fa-triangle-exclamation"></i></a>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="10" class="text-center text-muted" style="padding: 2.5rem;">
+                        <i class="fas fa-inbox" style="font-size: 2rem; opacity: 0.5; display: block; margin-bottom: 0.5rem;"></i>
+                        No sessions found
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
         </table>
     </div>
-</body>
-</html>
+</div>
+{% endblock %}

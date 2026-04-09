@@ -1,36 +1,164 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>Admin Dashboard</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
-</head>
-<body>
-    <div class="container">
-        <h1>Admin Dashboard</h1>
+{% extends "admin/base_admin.html" %}
+{% block title %}Admin dashboard — Proctoring System{% endblock %}
+{% block admin_head_extra %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+{% block admin_title %}Dashboard{% endblock %}
+{% block admin_subtitle %}Session overview and live detector health{% endblock %}
+{% block admin_header_extra %}
+<div class="flex gap-2 items-center">
+    <span class="badge badge-secondary" id="live-status">Idle</span>
+    <span class="badge badge-success animate-pulse" id="live-indicator" style="display:none;">LIVE</span>
+</div>
+{% endblock %}
+{% block admin_body %}
+<div class="stats-grid stagger">
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.total_sessions }}</div>
+        <div class="stat-label"><i class="bi bi-play-circle-fill"></i> Total sessions</div>
+    </div>
+    <div class="stat-card success">
+        <div class="stat-value">{{ stats.unique_students }}</div>
+        <div class="stat-label"><i class="bi bi-people-fill"></i> Unique students</div>
+    </div>
+    <div class="stat-card" style="background: linear-gradient(145deg, #0284c7 0%, #0369a1 100%);">
+        <div class="stat-value">{{ stats.unique_exams }}</div>
+        <div class="stat-label"><i class="bi bi-journal-text"></i> Unique exams</div>
+    </div>
+</div>
 
-        <ul>
-            <li><a href="{{ url_for('admin_sessions') }}">View all sessions</a>
-        </li>
-            <li><a href="{{ url_for('admin_reports') }}">Violation reports</a>
-        </li>
-            <li><a href="{{ url_for('admin_students') }}">Registered students</a>
-        </li>
-        </ul>
+<div class="grid grid-2 gap-4" style="margin-bottom: 1.5rem;">
+    <div class="card shadow">
+        <div class="card-header">
+            <h3 class="card-title"><i class="bi bi-pie-chart-fill"></i> Detector accuracy (live)</h3>
+            <span class="badge badge-info" id="metrics-refresh">Updating…</span>
+        </div>
+        <div class="chart-container">
+            <canvas id="metricsChart"></canvas>
+        </div>
+    </div>
+    <div class="card shadow">
+        <div class="card-header">
+            <h3 class="card-title"><i class="bi bi-lightning-charge"></i> Quick actions</h3>
+        </div>
+        <div class="card-body flex flex-col gap-2" style="padding-top: 0.25rem;">
+            <a href="/admin/sessions" class="btn btn-primary w-full"><i class="bi bi-list-ul"></i> All sessions</a>
+            <a href="/admin/reports" class="btn btn-info w-full"><i class="bi bi-file-earmark-bar-graph"></i> Reports</a>
+            <a href="/admin/students" class="btn btn-secondary w-full"><i class="bi bi-people"></i> Manage users</a>
+            <a href="/admin/metrics_advanced" class="btn btn-warning w-full"><i class="bi bi-graph-up-arrow"></i> Advanced analytics</a>
+        </div>
+    </div>
+</div>
 
-        <h2>Summary</h2>
-        <table class="table">
-            <tr>
-                <th>Total sessions</th>
-                <th>Total students</th>
-                <th>Total exams</th>
-            </tr>
-            <tr>
-                <td>{{ stats.total_sessions }}</td>
-                <td>{{ stats.unique_students }}</td>
-                <td>{{ stats.unique_exams }}</td>
-            </tr>
+<div class="card shadow">
+    <div class="card-header">
+        <h3 class="card-title"><i class="bi bi-clock-history"></i> Recent sessions</h3>
+        <span class="badge badge-primary">{{ recent_sessions|length }}</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover table-striped" id="sessionsTable">
+            <thead class="table-dark">
+                <tr>
+                    <th>Student</th>
+                    <th>Exam</th>
+                    <th>Start</th>
+                    <th>Duration</th>
+                    <th>Violations</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for session in recent_sessions %}
+                <tr>
+                    <td><i class="bi bi-person-circle"></i> {{ session.student_id }}</td>
+                    <td><i class="bi bi-journal-text"></i> {{ session.exam_id }}</td>
+                    <td>{{ session.session_start[:16] if session.session_start else '—' }}</td>
+                    <td>
+                        {% if not session.session_end %}
+                            —
+                        {% elif session.session_end == session.session_start %}
+                            {{ session.session_end[:16] }} · active
+                        {% else %}
+                            Ended
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% set summary = session.summary or {} %}
+                        {% if (summary.total_violations or 0) > 0 %}
+                            <span class="badge bg-danger severity-badge">{{ summary.by_severity.CRITICAL or 0 }} Cr</span>
+                            <span class="badge bg-warning severity-badge">{{ summary.by_severity.HIGH or 0 }} Hi</span>
+                            <span class="badge bg-info severity-badge">{{ summary.by_severity.MEDIUM or 0 }} Md</span>
+                            <span class="badge bg-secondary severity-badge">{{ summary.by_severity.LOW or 0 }} Lo</span>
+                        {% else %}
+                            <span class="badge bg-success">Clean</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="/admin/reports/{{ session.exam_id }}/{{ session.student_id }}" class="btn btn-sm btn-outline-info" title="Violations"><i class="bi bi-file-earmark-bar-graph"></i></a>
+                        <a href="/admin/exam_results/{{ session.exam_id }}/{{ session.student_id }}" class="btn btn-sm btn-outline-success" title="Results"><i class="bi bi-award"></i></a>
+                        <a href="/admin/label_session/session_{{ session.exam_id }}_{{ session.student_id }}" class="btn btn-sm btn-outline-warning" title="Label"><i class="bi bi-tag"></i></a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted" style="padding: 2rem;">No sessions yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
         </table>
     </div>
-</body>
-</html>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+    let metricsChart;
+
+    function initMetricsChart() {
+        const ctx = document.getElementById('metricsChart').getContext('2d');
+        metricsChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Face', 'Gaze', 'Object', 'Audio'],
+                datasets: [{
+                    data: [95, 90, 85, 70],
+                    backgroundColor: ['#0d9488', '#14b8a6', '#0284c7', '#f59e0b']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+    }
+
+    function updateLiveMetrics() {
+        fetch('/admin/metrics/json')
+            .then(r => r.json())
+            .then(data => {
+                if (data.status !== 'no_active_session' && !data.error) {
+                    if (metricsChart && data.detectors) {
+                        const accuracies = Object.values(data.detectors).map(d => d.accuracy_estimate || 0);
+                        metricsChart.data.datasets[0].data = accuracies;
+                        metricsChart.update('none');
+                    }
+                    document.getElementById('live-status').textContent = 'Active';
+                    document.getElementById('live-indicator').style.display = 'inline-flex';
+                    document.getElementById('metrics-refresh').textContent = 'Live';
+                } else {
+                    document.getElementById('live-status').textContent = 'Idle';
+                    document.getElementById('live-indicator').style.display = 'none';
+                    document.getElementById('metrics-refresh').textContent = 'No session';
+                }
+            }).catch(() => {
+                document.getElementById('live-status').textContent = 'Error';
+            });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        initMetricsChart();
+        updateLiveMetrics();
+        setInterval(updateLiveMetrics, 3000);
+    });
+</script>
+{% endblock %}

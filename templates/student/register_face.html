@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Face Registration - Proctoring System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .registration-container {
+            max-width: 600px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: white;
+            border-radius: var(--radius-lg);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        .camera-preview {
+            width: 100%;
+            max-width: 400px;
+            height: 300px;
+            background: #000;
+            border-radius: var(--radius);
+            margin: 1rem auto;
+            display: block;
+            object-fit: cover;
+        }
+        .status-badge {
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius);
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 1rem;
+        }
+        .status-registered {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status-not-registered {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .btn-register {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 1rem;
+        }
+        .btn-register:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .instructions {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: var(--radius);
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="registration-container">
+            <h1><i class="fas fa-user-circle"></i> Face Registration</h1>
+            <p>Student ID: <strong>{{ student_id }}</strong></p>
+            
+            {% if already_registered %}
+            <div class="status-badge status-registered">
+                <i class="fas fa-check-circle"></i> Your face is already registered!
+            </div>
+            {% else %}
+            <div class="status-badge status-not-registered">
+                <i class="fas fa-exclamation-circle"></i> Please register your face before taking the exam
+            </div>
+            {% endif %}
+            
+            <div class="instructions">
+                <h3><i class="fas fa-info-circle"></i> Instructions:</h3>
+                <ul>
+                    <li>Allow camera access when prompted</li>
+                    <li>Look directly at the camera</li>
+                    <li>Make sure your face is clearly visible</li>
+                    <li>Good lighting is recommended</li>
+                </ul>
+            </div>
+            
+            <video id="video" class="camera-preview" autoplay playsinline></video>
+            <canvas id="canvas" style="display: none;"></canvas>
+            
+            <button id="registerBtn" class="btn-register" {% if already_registered %}disabled{% endif %}>
+                <i class="fas fa-camera"></i> {% if already_registered %}Already Registered{% else %}Capture & Register Face{% endif %}
+            </button>
+            
+            <div id="status" style="margin-top: 1rem; text-align: center;"></div>
+            
+            <div style="margin-top: 2rem; text-align: center;">
+                <a href="{{ url_for('student_profile') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Profile
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const registerBtn = document.getElementById('registerBtn');
+        const statusDiv = document.getElementById('status');
+        
+        let stream = null;
+        
+        // Start camera
+        async function startCamera() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { width: 640, height: 480 } 
+                });
+                video.srcObject = stream;
+            } catch (err) {
+                statusDiv.innerHTML = '<span style="color: red;"><i class="fas fa-exclamation-triangle"></i> Cannot access camera: ' + err.message + '</span>';
+            }
+        }
+        
+        startCamera();
+        
+        registerBtn.addEventListener('click', async () => {
+            if (registerBtn.disabled) return;
+            
+            registerBtn.disabled = true;
+            registerBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            statusDiv.innerHTML = '<span style="color: blue;"><i class="fas fa-spinner fa-spin"></i> Capturing and registering face...</span>';
+            
+            // Capture frame
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            
+            const imageData = canvas.toDataURL('image/jpeg');
+            
+            try {
+                const response = await fetch('/register_face/{{ student_id }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ image: imageData })
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    statusDiv.innerHTML = '<span style="color: green;"><i class="fas fa-check-circle"></i> ' + result.message + '</span>';
+                    registerBtn.innerHTML = '<i class="fas fa-check"></i> Registered Successfully!';
+                    registerBtn.disabled = true;
+                } else {
+                    statusDiv.innerHTML = '<span style="color: red;"><i class="fas fa-exclamation-triangle"></i> ' + result.message + '</span>';
+                    registerBtn.innerHTML = '<i class="fas fa-camera"></i> Try Again';
+                    registerBtn.disabled = false;
+                }
+            } catch (err) {
+                statusDiv.innerHTML = '<span style="color: red;"><i class="fas fa-exclamation-triangle"></i> Error: ' + err.message + '</span>';
+                registerBtn.disabled = false;
+            }
+        });
+        
+        // Stop camera on page leave
+        window.addEventListener('beforeunload', () => {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+        });
+    </script>
+</body>
+</html>
+

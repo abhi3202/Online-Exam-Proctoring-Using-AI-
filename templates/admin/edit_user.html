@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Edit User - Proctoring System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .form-container {
+            max-width: 500px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: white;
+            border-radius: var(--radius-lg);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        .form-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        .form-input, .form-select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid var(--gray-lighter);
+            border-radius: var(--radius);
+            font-size: 1rem;
+        }
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="form-container">
+            <h1><i class="fas fa-user-edit"></i> Edit User</h1>
+            
+            <form id="editUserForm">
+                <div class="form-group">
+                    <label class="form-label">Name</label>
+                    <input type="text" name="name" id="name" class="form-input" value="{{ user.name }}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" name="email" id="email" class="form-input" value="{{ user.email }}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Role</label>
+                    <select name="role" id="role" class="form-select">
+                        <option value="student" {% if user.role == 'student' %}selected{% endif %}>Student</option>
+                        <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>Admin</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">New Password (leave blank to keep current)</label>
+                    <input type="password" name="password" id="password" class="form-input" placeholder="Enter new password">
+                </div>
+                
+                <div style="display: flex; gap: 1rem;">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
+                    <a href="{{ url_for('admin_students') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </a>
+                </div>
+            </form>
+            
+            <div id="message" style="margin-top: 1rem;"></div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('editUserForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            formData.append('name', document.getElementById('name').value);
+            formData.append('email', document.getElementById('email').value);
+            formData.append('role', document.getElementById('role').value);
+            const password = document.getElementById('password').value;
+            if (password) formData.append('password', password);
+            
+            try {
+                const response = await fetch('/admin/edit_user/{{ user.id }}', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    document.getElementById('message').innerHTML = 
+                        '<div style="color: green; padding: 1rem; background: #d4edda; border-radius: var(--radius);">' +
+                        '<i class="fas fa-check-circle"></i> ' + result.message + '</div>';
+                    setTimeout(() => {
+                        window.location.href = '/admin/students';
+                    }, 1500);
+                } else {
+                    document.getElementById('message').innerHTML = 
+                        '<div style="color: red; padding: 1rem; background: #f8d7da; border-radius: var(--radius);">' +
+                        '<i class="fas fa-exclamation-circle"></i> ' + result.message + '</div>';
+                }
+            } catch (err) {
+                document.getElementById('message').innerHTML = 
+                    '<div style="color: red;">Error: ' + err.message + '</div>';
+            }
+        });
+    </script>
+</body>
+</html>
+

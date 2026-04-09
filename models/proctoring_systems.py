@@ -2,15 +2,22 @@
 
 import os
 import json
+import uuid
 import cv2
+import time
 from collections import deque
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
 
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from models.face_detector import FaceDetector
 from models.gaze_tracker import GazeTracker
 from models.object_detector import ObjectDetector
 from models.audio_analyzer import AudioAnalyzer
+
+# Frequency of identity verification (every N frames)
+IDENTITY_VERIFY_INTERVAL = 60
 
 # Severity mapping (tune as needed)
 SEVERITY_MAP = {
@@ -33,6 +40,7 @@ SEVERITY_MAP = {
     "MULTIPLE_VOICES": "MEDIUM",
     "LOUD_AUDIO": "MEDIUM",
     "MULTIPLE_VOICES_RATE_HIGH": "CRITICAL",
+    "TAB_SWITCH": "HIGH",
 }
 
 
@@ -51,7 +59,6 @@ class ProctoringSystem:
             "enable_object_detection": True,
             "enable_audio_analysis": True,
             "save_violation_frames": True,
-            # Approximate seconds, but used via frame counts
             "save_interval": 20,
             "alert_threshold": {
                 "CRITICAL": 1,
@@ -59,7 +66,8 @@ class ProctoringSystem:
                 "MEDIUM": 5,
                 "LOW": 10
             },
-            "frame_skip": 2  # process every 2nd frame
+            "frame_skip": 2,
+            "object_detect_interval": 3,
         }
         self.config = {**default_config, **(config or {})}
 
@@ -67,7 +75,7 @@ class ProctoringSystem:
         self.face_detector = FaceDetector() if self.config["enable_face_detection"] else None
         self.gaze_tracker = GazeTracker() if self.config["enable_gaze_tracking"] else None
         self.object_detector = (
-            ObjectDetector(model_path="yolov8n.pt", confidence_threshold=0.5)
+            ObjectDetector(model_path="yolov8n.pt", confidence_threshold=0.4)
             if self.config["enable_object_detection"] else None
         )
 
@@ -81,6 +89,8 @@ class ProctoringSystem:
         self.start_time = datetime.utcnow()
         self.total_frames = 0
         self.violation_history: List[Dict[str, Any]] = []
+        self.frame_latencies: List[float] = []
+        self.current_warnings: List[str] = []  # Current warnings for popup display
 
         # Track MULTIPLE_VOICES events (timestamps within last 60s)
         self.multiple_voices_events = deque()
@@ -99,7 +109,7 @@ class ProctoringSystem:
     def _summarize_violations(self) -> Dict[str, Any]:
         by_severity = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
         for entry in self.violation_history:
-            sev = entry["severity"]
+            sev = entry.get("severity")
             if sev in by_severity:
                 by_severity[sev] += 1
 
@@ -138,12 +148,24 @@ class ProctoringSystem:
         path = os.path.join(self.violations_dir, filename)
         cv2.imwrite(path, frame)
 
+    def _verify_identity_continuous(self, frame) -> Dict[str, Any]:
+        """
+        Perform identity verification every IDENTITY_VERIFY_INTERVAL frames.
+        """
+        if self.total_frames % IDENTITY_VERIFY_INTERVAL != 0:
+            return {"verified": False, "status": "SKIPPED", "message": "Not time for verification"}
+        
+        from models.face_registration import verify_identity
+        return verify_identity(frame, self.student_id)
+
     def process_frame(self, frame) -> Dict[str, Any]:
         """
         Run face, gaze, and object detectors on a frame.
         """
+        start_time = time.time()
         self.total_frames += 1
         all_violations: List[str] = []
+        all_warnings: List[str] = []  # Warnings that are shown as popups but not recorded as violations
         results: Dict[str, Any] = {}
 
         # Face
@@ -152,11 +174,20 @@ class ProctoringSystem:
             results["face"] = face_res
             all_violations.extend(face_res.get("violations", []))
 
-        # Gaze
+        # Gaze - treat as warnings, not violations
         if self.gaze_tracker:
             gaze_res = self.gaze_tracker.analyze_frame(frame)
             results["gaze"] = gaze_res
-            all_violations.extend(gaze_res.get("violations", []))
+            
+            # These gaze violations should be warnings only (not counted in evaluation)
+            gaze_warnings = gaze_res.get("violations", [])
+            warning_types = ["EYES_CLOSED", "LOOKING_AWAY", "HEAD_TURNED_AWAY"]
+            
+            for gw in gaze_warnings:
+                if gw in warning_types:
+                    all_warnings.append(gw)
+                else:
+                    all_violations.append(gw)
 
         # Objects
         if self.object_detector:
@@ -165,13 +196,17 @@ class ProctoringSystem:
             all_violations.extend(obj_res.get("violations", []))
 
         uniq_violations = list(set(all_violations))
+        uniq_warnings = list(set(all_warnings))
+        
         results["violations"] = uniq_violations
+        results["warnings"] = uniq_warnings  # Warnings shown as popups but not in evaluation
 
         # Log each visual violation and save frames for high/critical
         for v in uniq_violations:
             sev = self._classify_severity(v)
             entry = {
                 "timestamp": datetime.utcnow().isoformat(),
+                "violation_id": str(uuid.uuid4()),
                 "violation": v,
                 "severity": sev
             }
@@ -179,17 +214,36 @@ class ProctoringSystem:
             if sev in ("CRITICAL", "HIGH"):
                 self._save_violation_frame(frame, v)
 
+        # Continuous identity verification every 60 frames
+        identity_result = self._verify_identity_continuous(frame)
+        if identity_result.get("verified") is False and identity_result.get("status") not in ("SKIPPED", None):
+            status = identity_result.get("status", "UNKNOWN")
+            if status == "WRONG_PERSON":
+                all_violations.append("WRONG_PERSON")
+                results["violations"] = list(set(results["violations"] + ["WRONG_PERSON"]))
+                self.violation_history.append({
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "violation_id": str(uuid.uuid4()),
+                    "violation": "WRONG_PERSON",
+                    "severity": "CRITICAL",
+                    "type": "IDENTITY_CHECK"
+                })
+                self._save_violation_frame(frame, "IDENTITY_MISMATCH")
+        
+        results["identity_verification"] = identity_result
+        
+        # Track latency
+        latency = (time.time() - start_time) * 1000
+        self.frame_latencies.append(latency)
+        
+        # Keep only last 100 latencies
+        if len(self.frame_latencies) > 100:
+            self.frame_latencies = self.frame_latencies[-100:]
+
         return results
 
     def process_audio(self) -> Dict[str, Any]:
-        """
-        Get next audio chunk, analyze, and return:
-          {
-            "violations": [...],
-            "metrics": {"db": float, "spectral_flatness": float},
-            "label": "SILENT" | "NORMAL" | "LOUD" | "MULTIPLE_VOICES"
-          }
-        """
+        """Get next audio chunk and analyze."""
         if not self.audio_analyzer:
             return {"violations": [], "metrics": {}, "label": "DISABLED"}
 
@@ -198,30 +252,26 @@ class ProctoringSystem:
         return res
 
     def _handle_audio_violations(self, audio_res: Dict[str, Any]):
-        """
-        Log audio violations and enforce MULTIPLE_VOICES > 10 times per minute rule.
-        """
+        """Log audio violations."""
         now = datetime.utcnow()
         for v in audio_res.get("violations", []):
             sev = self._classify_severity(v)
             self.violation_history.append({
                 "timestamp": now.isoformat(),
+                "violation_id": str(uuid.uuid4()),
                 "violation": v,
                 "severity": sev,
+                "type": "audio",
                 "audio_label": audio_res.get("label"),
                 "audio_metrics": audio_res.get("metrics", {})
             })
 
             if v == "MULTIPLE_VOICES":
-                # Add current event
                 self.multiple_voices_events.append(now)
-
-                # Remove events older than 60 seconds
                 one_minute_ago = now - timedelta(seconds=60)
                 while self.multiple_voices_events and self.multiple_voices_events[0] < one_minute_ago:
                     self.multiple_voices_events.popleft()
 
-                # If more than 10 MULTIPLE_VOICES in last 60s, log a rate-based critical event
                 if len(self.multiple_voices_events) > 10:
                     self.violation_history.append({
                         "timestamp": now.isoformat(),
@@ -230,23 +280,18 @@ class ProctoringSystem:
                     })
 
     def draw_combined_results(self, frame, results: Dict[str, Any]) -> Any:
-        """
-        Overlay high-level text on the frame (you can extend this with boxes).
-        """
-        # Combined visual violations
+        """Overlay text on the frame."""
         violations_text = ", ".join(results.get("violations", [])) or "OK"
         cv2.putText(frame, violations_text, (10, 30),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.7,
                     (0, 0, 255), 2)
 
-        # Gaze warning line
         gaze_res = results.get("gaze")
         if gaze_res and gaze_res.get("warning"):
             cv2.putText(frame, gaze_res["warning"], (10, 60),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6,
                         (0, 0, 255), 2)
 
-        # Optional: show last audio label
         audio_res = results.get("audio")
         if audio_res and audio_res.get("label") not in (None, "DISABLED"):
             audio_text = f"Audio: {audio_res['label']}"
@@ -257,9 +302,7 @@ class ProctoringSystem:
         return frame
 
     def start_monitoring(self, video_source=0):
-        """
-        Main loop: capture video, run all modules, display, and save logs.
-        """
+        """Main loop for monitoring."""
         cap = cv2.VideoCapture(video_source)
         frame_idx = 0
 
@@ -272,29 +315,24 @@ class ProctoringSystem:
 
                 frame_idx += 1
 
-                # Frame skipping for performance
                 if frame_idx % self.config["frame_skip"] != 0:
                     cv2.imshow("Proctoring", frame)
                     if cv2.waitKey(1) & 0xFF == 27:
                         break
                     continue
 
-                # Visual modules
                 results = self.process_frame(frame)
 
-                # Audio module
                 if self.audio_analyzer:
                     audio_res = self.process_audio()
                     results["audio"] = audio_res
                     self._handle_audio_violations(audio_res)
 
-                # Draw combined overlays
                 display = self.draw_combined_results(frame.copy(), results)
                 cv2.imshow("Proctoring", display)
-                if cv2.waitKey(1) & 0xFF == 27:  # ESC
+                if cv2.waitKey(1) & 0xFF == 27:
                     break
 
-                # Periodic session log save (approximate, frame-based)
                 if frame_idx % (self.config["save_interval"] * 5) == 0:
                     self._save_session_log()
         finally:
@@ -305,10 +343,100 @@ class ProctoringSystem:
             self._save_session_log()
 
     def finalize_session(self):
-        """
-        Call this when the exam ends (web version).
-        Stops audio and writes final session_log.json.
-        """
+        """Stop audio and write final session log."""
         if self.audio_analyzer:
             self.audio_analyzer.stop_recording()
         self._save_session_log()
+
+    def log_violation(self, violation_type: str, severity: str, frame=None, details: dict = None):
+        """Log a violation from external sources."""
+        entry = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "violation_id": str(uuid.uuid4()),
+            "violation": violation_type,
+            "severity": severity,
+            "source": "external"
+        }
+        if details:
+            entry["details"] = details
+        
+        self.violation_history.append(entry)
+        
+        if frame is not None and severity in ("CRITICAL", "HIGH"):
+            self._save_violation_frame(frame, violation_type)
+
+    def get_metrics(self) -> Dict[str, Any]:
+        """Get comprehensive metrics for all detectors."""
+        # Calculate detector-specific violations
+        face_violations = [v for v in self.violation_history if 
+                          v.get("violation") in ["WRONG_PERSON", "UNKNOWN_PERSON", "MULTIPLE_FACES", "NO_FACE_DETECTED"]]
+        gaze_violations = [v for v in self.violation_history if 
+                         v.get("violation") in ["HEAD_TURNED_AWAY", "LOOKING_AWAY", "EYES_CLOSED"]]
+        object_violations = [v for v in self.violation_history if 
+                           v.get("violation") in ["MOBILE_PHONE", "LAPTOP", "KEYBOARD", "MOUSE", "REMOTE_CONTROL", "SCREEN", "TABLET", "MULTIPLE_PERSONS"]]
+        audio_violations = [v for v in self.violation_history if v.get("type") == "audio"]
+        tab_switch_violations = [v for v in self.violation_history if v.get("violation") == "TAB_SWITCH"]
+
+        # Calculate average latency
+        avg_latency = sum(self.frame_latencies) / len(self.frame_latencies) if self.frame_latencies else 0
+        
+        # Calculate session duration
+        duration = (datetime.utcnow() - self.start_time).total_seconds()
+
+        return {
+            "session_info": {
+                "student_id": self.student_id,
+                "exam_id": self.exam_id,
+                "start_time": self.start_time.isoformat(),
+                "duration_seconds": round(duration, 2),
+                "total_frames": self.total_frames,
+            },
+            "detectors": {
+                "face_detector": {
+                    "enabled": self.face_detector is not None,
+                    "violations_count": len(face_violations),
+                    "violations": list(set([v["violation"] for v in face_violations])),
+                    "accuracy_estimate": max(0, 100 - (len(face_violations) / max(self.total_frames, 1) * 1000)),
+                    "estimated_latency_ms": 200,
+                },
+                "gaze_tracker": {
+                    "enabled": self.gaze_tracker is not None,
+                    "violations_count": len(gaze_violations),
+                    "violations": list(set([v["violation"] for v in gaze_violations])),
+                    "accuracy_estimate": max(0, 100 - (len(gaze_violations) / max(self.total_frames, 1) * 500)),
+                    "estimated_latency_ms": 10,
+                },
+                "object_detector": {
+                    "enabled": self.object_detector is not None,
+                    "violations_count": len(object_violations),
+                    "violations": list(set([v["violation"] for v in object_violations])),
+                    "accuracy_estimate": max(0, 100 - (len(object_violations) / max(self.total_frames, 1) * 300)),
+                    "estimated_latency_ms": 20,
+                },
+                "audio_analyzer": {
+                    "enabled": self.audio_analyzer is not None,
+                    "violations_count": len(audio_violations),
+                    "violations": list(set([v["violation"] for v in audio_violations])),
+                    "accuracy_estimate": max(0, 100 - (len(audio_violations) / max(self.total_frames, 1) * 800)),
+                    "estimated_latency_ms": 1500,
+                }
+            },
+            "violations": {
+                "total": len(self.violation_history),
+                "by_severity": self._summarize_violations()["by_severity"],
+                "by_type": {
+                    "face": len(face_violations),
+                    "gaze": len(gaze_violations),
+                    "object": len(object_violations),
+                    "audio": len(audio_violations),
+                    "tab_switch": len(tab_switch_violations)
+                }
+            },
+            "performance": {
+                "avg_frame_latency_ms": round(avg_latency, 2),
+                "frames_per_second": round(self.total_frames / max(duration, 1), 2),
+                "violation_rate": round(len(self.violation_history) / max(self.total_frames, 1), 4),
+            },
+            "config": self.config
+        }
+

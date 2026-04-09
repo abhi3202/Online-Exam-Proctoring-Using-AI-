@@ -381,179 +381,26 @@
         // FIXED: Enhanced tab switch detection (sync with proctoring.js)
         document.addEventListener('visibilitychange', () => {
             if (document.hidden && proctoringActive) {
-                violationCounters.tab_switch++;
-                const count = violationCounters.tab_switch;
-                
-                console.log(`🚨 TAB SWITCH #${count} detected`);
-                
-                if (count <= 2) {
-                    fetch(`/log_tab_switch/${studentId}/${examId}`, { 
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({violation: `TAB_SWITCH_${count}`, count: count, warning: true})
-                    });
-                    showKeyboardWarning(`TAB_SWITCH_${count}`);
-                }
-                
-                if (count === 3) {
-                    console.error('🚨 TAB_SWITCH VIOLATION - 3rd offense!');
-                    fetch(`/log_tab_switch/${studentId}/${examId}`, { 
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({violation: 'TAB_SWITCH_VIOLATION', count: 3, critical: true})
-                    });
-                    showCriticalViolation('TAB_SWITCH');
-                }
-            }
-        });
-
-// FIXED: Enhanced security + COPY/PASTE violations
-        let violationCounters = {
-            tab_switch: 0,
-            copy: 0,
-            paste: 0
-        };
-        
-        // Detect copy/paste/keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
-            const prohibitedCombos = [
-                {keys: e.ctrlKey && e.key === 'c', violation: 'COPY_SHORTCUT'},
-                {keys: e.ctrlKey && e.key === 'v', violation: 'PASTE_SHORTCUT'},
-                {keys: e.ctrlKey && e.key === 'a', violation: 'SELECT_ALL'},
-                {keys: e.ctrlKey && e.key === 'x', violation: 'CUT_SHORTCUT'},
-                {keys: e.ctrlKey && e.shiftKey && e.key === 'i', violation: 'INSPECT_DEVTOOLS'},
-                {keys: e.key === 'F12', violation: 'DEVTOOLS_F12'},
-                {keys: e.ctrlKey && e.shiftKey && e.key === 'C', violation: 'CONSOLE_CLEAR'},
-                {keys: e.ctrlKey && e.key === 'u', violation: 'VIEW_SOURCE'}
-            ];
-            
-            const violation = prohibitedCombos.find(combo => combo.keys)?.violation;
-            if (violation && proctoringActive) {
-                copyPasteCount++;
-                console.warn(`Violation logged: ${violation} (count: ${copyPasteCount})`);
+                console.log('Tab switch detected - logging violation');
                 fetch(`/log_tab_switch/${studentId}/${examId}`, { 
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({violation: violation, count: copyPasteCount})
-                }).catch(e => console.error('Violation log failed:', e));
-                
-                // Visual warning
-                showKeyboardWarning(violation);
+                    credentials: 'same-origin' 
+                }).catch(e => console.error('Tab log failed:', e));
             }
-            
-            // Block prohibited keys
-            if (violation) {
-                e.preventDefault();
-                e.stopPropagation();
-                return false;
-            }
-        }, true);
-
-        // Detect paste events
-        document.addEventListener('paste', (e) => {
-            if (proctoringActive) {
-                copyPasteCount++;
-                console.warn('📄 PASTE #1 - logged');
-                fetch(`/log_tab_switch/${studentId}/${examId}`, { 
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({violation: 'PASTE_VIOLATION_1', count: copyPasteCount})
-                }).catch(e => console.error('Paste #1 failed:', e));
-                showKeyboardWarning('PASTE #1');
-                
-                setTimeout(() => {
-                    console.warn('📄 PASTE #2 - SECOND warning');
-                    fetch(`/log_tab_switch/${studentId}/${examId}`, { 
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({violation: 'PASTE_VIOLATION_2', count: copyPasteCount + 0.5})
-                    }).catch(e => console.error('Paste #2 failed:', e));
-                    showKeyboardWarning('PASTE #2');
-                }, 300);
-            }
-            e.preventDefault();
         });
 
-        // Detect copy events
-        document.addEventListener('copy', (e) => {
-            if (proctoringActive) {
-                violationCounters.copy++;
-                const count = violationCounters.copy;
-                
-                console.warn(`📋 COPY #${count} detected`);
-                
-                if (count <= 2) {
-                    fetch(`/log_tab_switch/${studentId}/${examId}`, { 
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({violation: `COPY_VIOLATION_${count}`, count: count, warning: true})
-                    });
-                    showKeyboardWarning(`COPY_${count}`);
+        // Security: Prevent dev tools
+        (function() {
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && e.key === 'I') || (e.ctrlKey && e.shiftKey && e.key === 'C') || (e.ctrlKey && e.key === 'u')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
                 }
-                
-                if (count === 3) {
-                    console.error('🚨 COPY VIOLATION - 3rd offense!');
-                    fetch(`/log_tab_switch/${studentId}/${examId}`, { 
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({violation: 'COPY_VIOLATION', count: 3, critical: true})
-                    });
-                    showCriticalViolation('COPY');
-                }
-            }
-            e.preventDefault();
-        });
-
-        function showKeyboardWarning(violation) {
-            // 1. Top-right popup
-            let popupWarning = document.getElementById('keyboard-warning');
-            if (!popupWarning) {
-                popupWarning = document.createElement('div');
-                popupWarning.id = 'keyboard-warning';
-                popupWarning.style.cssText = `
-                    position: fixed; top: 20px; right: 20px; z-index: 10000;
-                    background: linear-gradient(135deg, #ef4444, #dc2626); color: white;
-                    padding: 16px 24px; border-radius: 12px; box-shadow: 0 8px 24px rgba(239,68,68,0.4);
-                    font-weight: 600; font-size: 16px; backdrop-filter: blur(10px);
-                `;
-                document.body.appendChild(popupWarning);
-            }
-            popupWarning.textContent = `⚠️ VIOLATION: ${violation.toUpperCase()} DETECTED!`;
-            popupWarning.style.animation = 'shake 0.5s, fadeOut 3s forwards';
+            }, true);
             
-            // 2. Exam panel warning banner
-            let examWarning = document.getElementById('exam-warning-banner');
-            if (!examWarning) {
-                examWarning = document.createElement('div');
-                examWarning.id = 'exam-warning-banner';
-                examWarning.style.cssText = `
-                    position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
-                    background: linear-gradient(135deg, #ef4444, #dc2626); color: white;
-                    padding: 12px 24px; text-align: center; font-weight: 700; font-size: 18px;
-                    box-shadow: 0 4px 12px rgba(239,68,68,0.4); transform: translateY(-100%);
-                    transition: transform 0.3s ease;
-                `;
-                document.body.appendChild(examWarning);
-            }
-            examWarning.textContent = `🚨 EXAM WARNING: ${violation.replace('_VIOLATION', '')} DETECTED - Proctor reviewing!`;
-            examWarning.style.transform = 'translateY(0)';
-            
-            // Auto-hide banner after 5s
-            setTimeout(() => {
-                examWarning.style.transform = 'translateY(-100%)';
-            }, 5000);
-        }
-
-        // Add shake/fade animations
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
-            @keyframes fadeOut { to { opacity: 0; transform: translateY(-10px); } }
-        `;
-        document.head.appendChild(style);
-
-        // Context menu block
-        document.addEventListener('contextmenu', e => e.preventDefault());
+            document.addEventListener('contextmenu', e => e.preventDefault());
+        })();
     </script>
 </body>
 </html>

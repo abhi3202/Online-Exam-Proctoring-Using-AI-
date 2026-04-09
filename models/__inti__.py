@@ -1,0 +1,1 @@
+from .face_registration import register_face

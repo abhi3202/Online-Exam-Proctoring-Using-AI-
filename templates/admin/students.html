@@ -1,31 +1,140 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>Registered Students</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
-</head>
-<body class="page-center">
-    <div class="container">
-        <h1>Registered Students</h1>
-        <p><a href="{{ url_for('admin_dashboard') }}">← Back to dashboard</a></p>
+{% extends "admin/base_admin.html" %}
+{% block title %}Users — Proctoring System{% endblock %}
+{% block admin_head_extra %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+{% endblock %}
+{% block admin_title %}Users{% endblock %}
+{% block admin_subtitle %}Manage accounts and roles{% endblock %}
+{% block admin_body %}
+<div class="page-header page-header--success" style="margin-bottom: 1.5rem;">
+    <h1><i class="fas fa-users"></i> Directory</h1>
+    <p>Registered students and administrators</p>
+</div>
 
+<div class="card shadow animate-fadeInUp">
+    <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-user-graduate"></i> Accounts</h3>
+        <span class="badge badge-success">{{ users|length }} total</span>
+    </div>
+    <div class="table-container">
         <table class="table">
-            <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Role</th>
-            </tr>
-            {% for u in users %}
-            <tr>
-                <td>{{ u[0] }}</td>
-                <td>{{ u[1] }}</td>
-                <td>{{ u[2] }}</td>
-                <td>{{ u[3] }}</td>
-            </tr>
-            {% endfor %}
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                <tr class="animate-fadeIn">
+                    <td><strong>{{ u[0] }}</strong></td>
+                    <td>
+                        <div class="flex items-center gap-2">
+                            <div class="user-avatar-sm">{{ u[1][0]|upper }}</div>
+                            {{ u[1] }}
+                        </div>
+                    </td>
+                    <td>{{ u[2] }}</td>
+                    <td>
+                        {% if u[3] == 'admin' %}
+                        <span class="badge badge-danger">Admin</span>
+                        {% elif u[3] == 'student' %}
+                        <span class="badge badge-success">Student</span>
+                        {% else %}
+                        <span class="badge badge-info">{{ u[3] }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <a href="{{ url_for('edit_user_route', user_id=u[0]) }}" class="btn btn-sm btn-secondary">
+                                <i class="fas fa-pen"></i> Edit
+                            </a>
+                            <button type="button" class="btn btn-sm btn-danger js-user-delete" data-user-id="{{ u[0] }}" data-user-name="{{ u[1] }}">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="text-center text-muted" style="padding: 3rem;">
+                        <i class="fas fa-user-plus" style="font-size: 2.5rem; opacity: 0.4; display: block; margin-bottom: 0.5rem;"></i>
+                        <p>No users yet</p>
+                        <a href="{{ url_for('auth_register') }}" class="btn btn-primary mt-2"><i class="fas fa-plus"></i> Register</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
         </table>
     </div>
-</body>
-</html>
+</div>
+
+<div id="deleteModal" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-panel">
+        <h3 class="text-danger mb-2"><i class="fas fa-triangle-exclamation"></i> Delete user</h3>
+        <p id="deleteMessage" class="text-muted">Are you sure?</p>
+        <div class="flex justify-center gap-2 mt-3">
+            <button type="button" id="confirmDeleteBtn" class="btn btn-danger">Delete</button>
+            <button type="button" onclick="closeDeleteModal()" class="btn btn-secondary">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast" class="toast-notify"></div>
+{% endblock %}
+{% block scripts %}
+<script>
+    let deleteUserId = null;
+
+    function confirmDelete(userId, userName) {
+        deleteUserId = userId;
+        document.getElementById('deleteMessage').textContent = 'Delete user "' + userName + '"? This cannot be undone.';
+        document.getElementById('deleteModal').classList.add('is-open');
+        document.getElementById('confirmDeleteBtn').onclick = function() { deleteUser(deleteUserId); };
+    }
+
+    function closeDeleteModal() {
+        document.getElementById('deleteModal').classList.remove('is-open');
+        deleteUserId = null;
+    }
+
+    function deleteUser(userId) {
+        fetch('/admin/delete_user/' + userId, { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+            .then(response => response.json())
+            .then(data => {
+                closeDeleteModal();
+                if (data.status === 'success') {
+                    showToast(data.message, 'success');
+                    setTimeout(() => window.location.reload(), 1200);
+                } else {
+                    showToast(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                closeDeleteModal();
+                showToast('Error: ' + error.message, 'error');
+            });
+    }
+
+    function showToast(message, type) {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.style.background = type === 'success' ? 'var(--success)' : 'var(--danger)';
+        toast.classList.add('is-visible');
+        setTimeout(() => toast.classList.remove('is-visible'), 3200);
+    }
+
+    document.getElementById('deleteModal').addEventListener('click', function(e) {
+        if (e.target === this) closeDeleteModal();
+    });
+
+    document.querySelectorAll('.js-user-delete').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            confirmDelete(parseInt(this.getAttribute('data-user-id'), 10), this.getAttribute('data-user-name') || '');
+        });
+    });
+</script>
+{% endblock %}

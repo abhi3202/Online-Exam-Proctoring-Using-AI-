@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Advanced Metrics - Human Friendly</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .metric-card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .metric-header { font-size: 20px; font-weight: 700; margin-bottom: 20px; color: #1f2937; }
+        .grade-badge { padding: 8px 16px; border-radius: 25px; font-weight: 600; font-size: 14px; display: inline-block; }
+        .excellent { background: linear-gradient(135deg, #10b981, #059669); color: white; }
+        .good { background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; }
+        .fair { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; }
+        .poor { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; }
+        .progress-bar { background: #e5e7eb; height: 12px; border-radius: 6px; overflow: hidden; margin: 8px 0; }
+        .progress-fill { height: 100%; transition: width 0.5s ease; border-radius: 6px; }
+        .excellent-fill { background: linear-gradient(135deg, #10b981, #059669); }
+        .good-fill { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+        .fair-fill { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .poor-fill { background: linear-gradient(135deg, #ef4444, #dc2626); }
+        .recommendation { padding: 16px; border-radius: 8px; margin: 16px 0; font-size: 15px; }
+        .recommendation.good { background: #d1fae5; border-left: 4px solid #10b981; }
+        .recommendation.warning { background: #fef3c7; border-left: 4px solid #f59e0b; }
+        .recommendation.danger { background: #fee2e2; border-left: 4px solid #ef4444; }
+        .chart-container { height: 300px; margin: 20px 0; }
+        .summary-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin: 20px 0; }
+        .stat-card { text-align: center; padding: 20px; background: linear-gradient(135deg, #f8fafc, #e2e8f0); border-radius: 12px; }
+        .stat-number { font-size: 36px; font-weight: 700; }
+        .overall-precision { font-size: 24px; font-weight: 700; padding: 16px; border-radius: 12px; text-align: center; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div style="max-width: 1400px; margin: 0 auto; padding: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;">
+            <h1><i class="fas fa-chart-line"></i> ML Accuracy Dashboard</h1>
+            <nav>
+                <a href="{{ url_for('admin_label_sessions') }}" style="margin-right: 16px; color: #3b82f6;">← Label More</a>
+                <a href="{{ url_for('admin_metrics') }}">Live Metrics</a>
+            </nav>
+        </div>
+
+        {% if error %}
+        <div style="background: #fee2e2; border: 1px solid #ef4444; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+            <strong>🚫 No data yet</strong><br>{{ error }}<br><br>
+            <a href="{{ url_for('admin_label_sessions') }}" style="background: #ef4444; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none;">Start Labeling Violations →</a>
+        </div>
+        {% else %}
+        
+        <!-- Overall Precision -->
+        <div class="overall-precision {% if overall_precision > 0.85 %}excellent{% elif overall_precision > 0.7 %}good{% elif overall_precision > 0.5 %}fair{% else %}poor{% endif %}">
+            📊 Overall Precision: {{ (overall_precision * 100)|round(1) }}% 
+            <span class="grade-badge {% if overall_precision > 0.85 %}excellent{% elif overall_precision > 0.7 %}good{% elif overall_precision > 0.5 %}fair{% else %}poor{% endif %}">
+                {% if overall_precision > 0.85 %}Excellent{% elif overall_precision > 0.7 %}Good{% elif overall_precision > 0.5 %}Fair{% else %}Poor{% endif %}
+            </span>
+        </div>
+
+        <!-- Summary Stats -->
+        <div class="summary-stats">
+            <div class="stat-card">
+                <div class="stat-number" style="color: #10b981;">{{ metrics|length }}</div>
+                <div>Violation Types</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" style="color: #3b82f6;">{{ sum([m.total_labeled for m in metrics.values()]) }}</div>
+                <div>Total Labels</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" style="color: #10b981;">{{ sum([m.true_positives for m in metrics.values()]) }}</div>
+                <div>True Positives</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" style="color: #ef4444;">{{ sum([m.false_positives for m in metrics.values()]) }}</div>
+                <div>False Positives</div>
+            </div>
+        </div>
+
+        <!-- Individual Metrics Cards -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px;">
+            {% for type, m in metrics.items() %}
+            <div class="metric-card">
+                <div class="metric-header">{{ type.upper() }} Detection</div>
+                
+                <!-- Grade Badge -->
+                {% set grade = 'excellent' if m.precision > 0.85 else ('good' if m.precision > 0.7 else ('fair' if m.precision > 0.5 else 'poor')) %}
+                <div class="grade-badge {{ grade }}">{{ (m.precision * 100)|round(0) }}% Precision 
+                    <small style="font-weight: 400;">(F1: {{ m.f1|round(3) }})</small>
+                </div>
+
+                <!-- Progress Bars -->
+                <div style="margin: 20px 0;">
+                    <div>Precision: {{ (m.precision * 100)|round(1) }}%</div>
+                    <div class="progress-bar"><div class="progress-fill {{ grade }}-fill" style="width: {{ (m.precision * 100)|round(1) }}%;"></div></div>
+                </div>
+                
+                <div style="margin: 20px 0;">
+                    <div>F1 Score: {{ m.f1|round(3) }}</div>
+                    <div class="progress-bar"><div class="progress-fill {{ grade }}-fill" style="width: {{ (m.f1 * 100)|round(1) }}%;"></div></div>
+                </div>
+
+                <!-- TP/FP Counts -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 20px 0;">
+                    <div style="text-align: center; padding: 12px; background: #d1fae5; border-radius: 8px;">
+                        <div style="font-size: 24px; font-weight: 700; color: #10b981;">{{ m.true_positives }}</div>
+                        <div style="color: #047857;">True Positives</div>
+                    </div>
+                    <div style="text-align: center; padding: 12px; background: #fee2e2; border-radius: 8px;">
+                        <div style="font-size: 24px; font-weight: 700; color: #dc2626;">{{ m.false_positives }}</div>
+                        <div style="color: #991b1b;">False Positives</div>
+                    </div>
+                </div>
+
+                <!-- Confusion Matrix -->
+                <div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin: 20px 0;">
+                    <div style="font-weight: 600; margin-bottom: 12px;">Confusion Matrix (Actual → Predicted)</div>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr style="background: #e5e7eb;">
+                            <th style="padding: 8px; text-align: center;">Actual\Pred</th>
+                            <th style="padding: 8px; text-align: center; background: #ef4444; color: white;">False</th>
+                            <th style="padding: 8px; text-align: center; background: #10b981; color: white;">True</th>
+                        </tr>
+                        {% for row, i in m.confusion_matrix|enumerate %}
+                        <tr>
+                            {% for val in row %}
+                            <td style="padding: 8px 12px; text-align: center; border: 1px solid #d1d5db;">
+                                {{ val }}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </table>
+                </div>
+
+                <!-- Recommendation -->
+                <div class="recommendation {% if m.precision > 0.85 %}good{% elif m.precision > 0.6 %}warning{% else %}danger{% endif %}">
+                    {% if m.precision > 0.85 %}
+                        ✅ <strong>Production Ready</strong> - Excellent accuracy
+                    {% elif m.precision > 0.6 %}
+                        ⚠️ <strong>Monitor Closely</strong> - Needs more human labels
+                    {% else %}
+                        ❌ <strong>Retraining Needed</strong> - Too many false positives
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Overall Chart -->
+        <div class="metric-card">
+            <h3 style="margin-bottom: 20px;">Precision by Violation Type</h3>
+            <canvas id="precisionChart" class="chart-container"></canvas>
+        </div>
+
+        <script>
+            // Precision chart
+            const ctx = document.getElementById('precisionChart').getContext('2d');
+            const precisions = {{ metrics|tojson }};
+            const labels = Object.keys(precisions);
+            const data = labels.map(key => precisions[key].precision);
+            
+            const colors = data.map(p => {
+                if (p > 0.85) return 'rgba(34,197,94,0.8)';
+                if (p > 0.7) return 'rgba(12,74,110,0.8)';
+                if (p > 0.5) return 'rgba(245,158,11,0.8)';
+                return 'rgba(239,68,68,0.8)';
+            });
+            
+            const borderColors = data.map(p => {
+                if (p > 0.85) return 'rgba(34,197,94,1)';
+                if (p > 0.7) return 'rgba(12,74,110,1)';
+                if (p > 0.5) return 'rgba(245,158,11,1)';
+                return 'rgba(239,68,68,1)';
+            });
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Precision',
+                        data: data,
+                        backgroundColor: colors,
+                        borderColor: borderColors,
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: { 
+                            beginAtZero: true, 
+                            max: 1, 
+                            title: { display: true, text: 'Precision Score' },
+                            ticks: { callback: function(value) { return (value * 100) + '%'; } }
+                        }
+                    },
+                    plugins: {
+                        title: { display: true, text: 'Detector Accuracy (Higher = Better)' },
+                        legend: { display: false }
+                    }
+                }
+            });
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: { beginAtZero: true, max: 1, title: { display: true, text: 'Precision' } }
+                    },
+                    plugins: {
+                        title: { display: true, text: 'Detector Accuracy (Higher = Better)' }
+                    }
+                }
+            });
+        </script>
+
+        {% endif %}
+    </div>
+</body>
+</html>

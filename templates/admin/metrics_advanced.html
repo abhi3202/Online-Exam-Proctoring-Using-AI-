@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Advanced Metrics - Proctoring</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+</head>
+<body>
+    <div class="admin-page">
+        <!-- Header -->
+        <div class="page-header">
+            <h1><i class="fas fa-chart-bar"></i> Advanced ML Metrics (Human Labeled)</h1>
+            {% if overall_precision is defined %}
+            <p class="text-gray">Average Precision: <span class="precision-{{ 'good' if overall_precision > 0.8 else 'bad' }}">{{ overall_precision|round(3) }}</span></p>
+            {% endif %}
+        </div>
+        
+        <nav class="nav-menu">
+            <a href="{{ url_for('admin_label_sessions') }}"><i class="fas fa-arrow-left"></i> Label Sessions</a>
+            <a href="{{ url_for('admin_metrics') }}">Live Metrics</a>
+        </nav>
+        
+        {% if error %}
+        <div class="alert alert-warning mt-4">
+            {{ error }}
+        </div>
+        {% else %}
+        <div class="grid grid-2 gap-4">
+            {% for type, m in metrics.items() %}
+            <div class="metric-card">
+                <div class="metric-header">{{ type }} ({{ m.total_labeled }} labeled)</div>
+                <table class="table mt-2">
+                    <tr><th>TP</th><th>FP</th></tr>
+                    <tr><td>{{ m.true_positives }}</td><td>{{ m.false_positives }}</td></tr>
+                </table>
+                <table class="table mt-2">
+                    <tr><th>Precision</th><th>F1</th></tr>
+                    <tr><td class="precision-{{ 'good' if m.precision > 0.8 else 'bad' }}">{{ m.precision|round(3) }}</td><td>{{ m.f1|round(3) }}</td></tr>
+                </table>
+                <table class="table cm-table mt-2">
+                    <tr><th colspan="2">Confusion Matrix</th></tr>
+                    {% for row in m.confusion_matrix %}
+                    <tr>{% for val in row %}<td>{{ val }}</td>{% endfor %}</tr>
+                    {% endfor %}
+                </table>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

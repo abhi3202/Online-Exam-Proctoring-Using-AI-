@@ -1,31 +1,97 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>Registered Students</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
-</head>
-<body class="page-center">
-    <div class="container">
-        <h1>Registered Students</h1>
-        <p><a href="{{ url_for('admin_dashboard') }}">← Back to dashboard</a></p>
+{% extends "admin/base_admin.html" %}
+{% block title %}Violations — Proctoring System{% endblock %}
+{% block admin_head_extra %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+{% endblock %}
+{% block admin_title %}Violation report{% endblock %}
+{% block admin_subtitle %}Exam {{ exam_id }} · Student {{ student_id }}{% endblock %}
+{% block admin_body %}
+<div class="page-header page-header--danger" style="margin-bottom: 1.5rem;">
+    <h1><i class="fas fa-triangle-exclamation"></i> Session violations</h1>
+    <p>Timeline and severity for this exam attempt</p>
+</div>
 
+<div class="summary-grid animate-fadeInUp">
+    <div class="summary-item">
+        <h4><i class="fas fa-play"></i> Start</h4>
+        <div class="value" style="font-size: 1rem;">{{ data.session_start[:19] if data.session_start else '—' }}</div>
+    </div>
+    <div class="summary-item">
+        <h4><i class="fas fa-stop"></i> End</h4>
+        <div class="value" style="font-size: 1rem;">{{ data.session_end[:19] if data.session_end else '—' }}</div>
+    </div>
+    <div class="summary-item">
+        <h4><i class="fas fa-circle-exclamation"></i> Total</h4>
+        <div class="value" style="font-size: 1.75rem;">{{ data.violation_summary.total_violations }}</div>
+    </div>
+    <div class="summary-item">
+        <h4><i class="fas fa-percent"></i> Rate</h4>
+        <div class="value" style="font-size: 1.75rem;">{{ "%.1f"|format(data.violation_summary.violation_rate * 100) }}%</div>
+    </div>
+</div>
+
+<div class="stats-grid animate-fadeInUp">
+    <div class="stat-card danger">
+        <div class="stat-value">{{ data.violation_summary.by_severity.CRITICAL }}</div>
+        <div class="stat-label"><i class="fas fa-times-circle"></i> Critical</div>
+    </div>
+    <div class="stat-card" style="background: linear-gradient(145deg, #ea580c 0%, #c2410c 100%);">
+        <div class="stat-value">{{ data.violation_summary.by_severity.HIGH }}</div>
+        <div class="stat-label"><i class="fas fa-triangle-exclamation"></i> High</div>
+    </div>
+    <div class="stat-card warning">
+        <div class="stat-value">{{ data.violation_summary.by_severity.MEDIUM }}</div>
+        <div class="stat-label"><i class="fas fa-circle-info"></i> Medium</div>
+    </div>
+    <div class="stat-card success">
+        <div class="stat-value">{{ data.violation_summary.by_severity.LOW }}</div>
+        <div class="stat-label"><i class="fas fa-check"></i> Low</div>
+    </div>
+</div>
+
+<div class="card shadow animate-fadeInUp" style="margin-top: 1rem;">
+    <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-clock-rotate-left"></i> Violation history</h3>
+        <span class="badge badge-danger">{{ data.violation_history|length }} records</span>
+    </div>
+    <div class="table-container">
         <table class="table">
-            <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Role</th>
-            </tr>
-            {% for u in users %}
-            <tr>
-                <td>{{ u[0] }}</td>
-                <td>{{ u[1] }}</td>
-                <td>{{ u[2] }}</td>
-                <td>{{ u[3] }}</td>
-            </tr>
-            {% endfor %}
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Violation</th>
+                    <th>Severity</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if data.violation_history %}
+                    {% for v in data.violation_history %}
+                    <tr class="animate-fadeIn">
+                        <td>{{ v.timestamp[:19] if v.timestamp else '—' }}</td>
+                        <td><strong>{{ v.violation }}</strong></td>
+                        <td><span class="badge severity-{{ v.severity|lower }}">{{ v.severity }}</span></td>
+                        <td>
+                            {% if v.image_path %}
+                            <img src="{{ url_for('static', filename=v.image_path) }}" class="violation-img" alt="Evidence">
+                            {% elif v.audio_label %}
+                            <span class="badge badge-info"><i class="fas fa-volume-high"></i> {{ v.audio_label }}</span>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                <tr>
+                    <td colspan="4" class="text-center" style="padding: 3rem;">
+                        <i class="fas fa-circle-check" style="font-size: 2.5rem; color: var(--success); margin-bottom: 0.75rem;"></i>
+                        <p class="text-muted">No violations for this session</p>
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
         </table>
     </div>
-</body>
-</html>
+</div>
+{% endblock %}

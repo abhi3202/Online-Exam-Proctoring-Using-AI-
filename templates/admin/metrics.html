@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Detector Metrics - Proctoring System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .metrics-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .page-header {
+            background: linear-gradient(135deg, #48bb78 0%, #2f855a 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .page-header h1 {
+            margin: 0;
+            font-size: 28px;
+        }
+        
+        .page-header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+        }
+        
+        .nav-menu {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .nav-menu a {
+            padding: 10px 20px;
+            background: #f3f4f6;
+            color: #374151;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .nav-menu a:hover {
+            background: #e5e7eb;
+        }
+        
+        .nav-menu a.active {
+            background: #48bb78;
+            color: white;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .detector-card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .detector-header {
+            padding: 15px 20px;
+            color: white;
+            font-weight: 600;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .detector-header.face { background: #667eea; }
+        .detector-header.gaze { background: #f59e0b; }
+        .detector-header.object { background: #10b981; }
+        .detector-header.audio { background: #ef4444; }
+        
+        .detector-body {
+            padding: 20px;
+        }
+        
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        
+        .metric-row:last-child {
+            border-bottom: none;
+        }
+        
+        .metric-label {
+            color: #6b7280;
+            font-weight: 500;
+        }
+        
+        .metric-value {
+            color: #111827;
+            font-weight: 600;
+        }
+        
+        .metric-value.enabled { color: #10b981; }
+        .metric-value.disabled { color: #ef4444; }
+        
+        .accuracy-bar {
+            height: 24px;
+            background: #e5e7eb;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        
+        .accuracy-fill {
+            height: 100%;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 12px;
+            transition: width 0.5s ease;
+        }
+        
+        .accuracy-fill.high { background: #10b981; }
+        .accuracy-fill.medium { background: #f59e0b; }
+        .accuracy-fill.low { background: #ef4444; }
+        
+        .latency-bar {
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            margin-top: 5px;
+            overflow: hidden;
+        }
+        
+        .latency-fill {
+            height: 100%;
+            border-radius: 4px;
+            background: #3b82f6;
+        }
+        
+        .violations-list {
+            margin-top: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        
+        .violation-badge {
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .summary-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .summary-card h3 {
+            margin: 0;
+            font-size: 32px;
+            color: #111827;
+        }
+        
+        .summary-card p {
+            margin: 5px 0 0 0;
+            color: #6b7280;
+            font-size: 14px;
+        }
+        
+        .summary-card.critical h3 { color: #dc2626; }
+        .summary-card.high h3 { color: #ea580c; }
+        .summary-card.medium h3 { color: #ca8a04; }
+        .summary-card.low h3 { color: #16a34a; }
+        
+        .performance-section {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .performance-section h2 {
+            margin: 0 0 20px 0;
+            color: #111827;
+            font-size: 20px;
+        }
+        
+        .performance-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+        
+        .perf-item {
+            text-align: center;
+            padding: 15px;
+            background: #f9fafb;
+            border-radius: 8px;
+        }
+        
+        .perf-item .value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #3b82f6;
+        }
+        
+        .perf-item .label {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 5px;
+        }
+        
+        .refresh-btn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            float: right;
+        }
+        
+        .refresh-btn:hover {
+            background: #2563eb;
+        }
+        
+        .no-session {
+            text-align: center;
+            padding: 40px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .no-session i {
+            font-size: 48px;
+            color: #9ca3af;
+            margin-bottom: 20px;
+        }
+        
+        .no-session p {
+            color: #6b7280;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="metrics-container">
+        <!-- Header -->
+        <div class="page-header">
+            <h1><i class="fas fa-chart-line"></i> Detector Evaluation Metrics</h1>
+            <p>Real-time performance metrics for all proctoring detectors</p>
+            <button class="refresh-btn" onclick="location.reload()">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
+        
+        <!-- Navigation -->
+        <nav class="nav-menu">
+            <a href="{{ url_for('admin_dashboard') }}">
+                <i class="fas fa-home"></i> Dashboard
+            </a>
+            <a href="{{ url_for('admin_sessions') }}">
+                <i class="fas fa-list"></i> Sessions
+            </a>
+            <a href="{{ url_for('admin_reports') }}">
+                <i class="fas fa-exclamation-triangle"></i> Violations
+            </a>
+            <a href="{{ url_for('admin_students') }}">
+                <i class="fas fa-users"></i> Students
+            </a>
+            <a href="{{ url_for('admin_metrics') }}" class="active">
+                <i class="fas fa-chart-bar"></i> Live Metrics
+            </a>
+            <a href="{{ url_for('admin_label_sessions') }}">
+                <i class="fas fa-tag"></i> Label Sessions
+            </a>
+            <a href="{{ url_for('admin_metrics_advanced') }}">
+                <i class="fas fa-brain"></i> ML Metrics
+            </a>
+            <a href="{{ url_for('logout') }}">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </nav>
+        
+        {% if metrics.session_info.total_frames == 0 %}
+        <div class="no-session">
+            <i class="fas fa-video-slash"></i>
+            <p>No active proctoring session</p>
+            <p style="font-size: 14px;">Metrics will display when a student starts an exam</p>
+        </div>
+        {% else %}
+        
+        <!-- Session Info -->
+        <div style="margin-bottom: 20px; color: #6b7280;">
+            <strong>Session:</strong> {{ metrics.session_info.exam_id }} - Student: {{ metrics.session_info.student_id }} | 
+            <strong>Duration:</strong> {{ metrics.session_info.duration_seconds }}s | 
+            <strong>Frames:</strong> {{ metrics.session_info.total_frames }}
+        </div>
+        
+        <!-- Summary Cards -->
+        <div class="summary-grid">
+            <div class="summary-card">
+                <h3>{{ metrics.violations.total }}</h3>
+                <p>Total Violations</p>
+            </div>
+            <div class="summary-card critical">
+                <h3>{{ metrics.violations.by_severity.CRITICAL }}</h3>
+                <p>Critical</p>
+            </div>
+            <div class="summary-card high">
+                <h3>{{ metrics.violations.by_severity.HIGH }}</h3>
+                <p>High</p>
+            </div>
+            <div class="summary-card medium">
+                <h3>{{ metrics.violations.by_severity.MEDIUM }}</h3>
+                <p>Medium</p>
+            </div>
+            <div class="summary-card low">
+                <h3>{{ metrics.violations.by_severity.LOW }}</h3>
+                <p>Low</p>
+            </div>
+        </div>
+        
+        <!-- Performance Section -->
+        <div class="performance-section">
+            <h2><i class="fas fa-tachometer-alt"></i> System Performance</h2>
+            <div class="performance-grid">
+                <div class="perf-item">
+                    <div class="value">{{ metrics.performance.avg_frame_latency_ms }}ms</div>
+                    <div class="label">Avg Frame Latency</div>
+                </div>
+                <div class="perf-item">
+                    <div class="value">{{ metrics.performance.frames_per_second }} FPS</div>
+                    <div class="label">Processing Speed</div>
+                </div>
+                <div class="perf-item">
+                    <div class="value">{{ (metrics.performance.violation_rate * 100)|round(2) }}%</div>
+                    <div class="label">Violation Rate</div>
+                </div>
+                <div class="perf-item">
+                    <div class="value">{{ metrics.violations.by_type.face }}</div>
+                    <div class="label">Face Violations</div>
+                </div>
+                <div class="perf-item">
+                    <div class="value">{{ metrics.violations.by_type.gaze }}</div>
+                    <div class="label">Gaze Violations</div>
+                </div>
+                <div class="perf-item">
+                    <div class="value">{{ metrics.violations.by_type.object }}</div>
+                    <div class="label">Object Violations</div>
+                </div>
+                <div class="perf-item">
+                    <div class="value">{{ metrics.violations.by_type.audio }}</div>
+                    <div class="label">Audio Violations</div>
+                </div>
+                <div class="perf-item">
+                    <div class="value">{{ metrics.violations.by_type.tab_switch }}</div>
+                    <div class="label">Tab Switches</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Detector Metrics -->
+        <div class="metrics-grid">
+            <!-- Face Detector -->
+            <div class="detector-card">
+                <div class="detector-header face">
+                    <i class="fas fa-user"></i> Face Detector
+                </div>
+                <div class="detector-body">
+                    <div class="metric-row">
+                        <span class="metric-label">Enabled</span>
+                        <span class="metric-value {% if metrics.detectors.face_detector.enabled %}enabled{% else %}disabled{% endif %}">
+                            {{ 'Yes' if metrics.detectors.face_detector.enabled else 'No' }}
+                        </span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Violations</span>
+                        <span class="metric-value">{{ metrics.detectors.face_detector.violations_count }}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Accuracy (Est.)</span>
+                        <span class="metric-value">{{ metrics.detectors.face_detector.accuracy_estimate|round(1) }}%</span>
+                    </div>
+                    <div class="accuracy-bar">
+                        {% set acc = metrics.detectors.face_detector.accuracy_estimate %}
+                        <div class="accuracy-fill {% if acc > 90 %}high{% elif acc > 70 %}medium{% else %}low{% endif %}" 
+                             style="width: {{ acc }}%">
+                            {{ acc|round(1) }}%
+                        </div>
+                    </div>
+                    <div class="metric-row" style="margin-top: 15px;">
+                        <span class="metric-label">Latency</span>
+                        <span class="metric-value">{{ metrics.detectors.face_detector.estimated_latency_ms }}ms</span>
+                    </div>
+                    <div class="latency-bar">
+                        <div class="latency-fill" style="width: 40%;"></div>
+                    </div>
+                    {% if metrics.detectors.face_detector.violations %}
+                    <div class="violations-list">
+                        {% for v in metrics.detectors.face_detector.violations %}
+                        <span class="violation-badge">{{ v }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Gaze Tracker -->
+            <div class="detector-card">
+                <div class="detector-header gaze">
+                    <i class="fas fa-eye"></i> Gaze Tracker
+                </div>
+                <div class="detector-body">
+                    <div class="metric-row">
+                        <span class="metric-label">Enabled</span>
+                        <span class="metric-value {% if metrics.detectors.gaze_tracker.enabled %}enabled{% else %}disabled{% endif %}">
+                            {{ 'Yes' if metrics.detectors.gaze_tracker.enabled else 'No' }}
+                        </span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Violations</span>
+                        <span class="metric-value">{{ metrics.detectors.gaze_tracker.violations_count }}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Accuracy (Est.)</span>
+                        <span class="metric-value">{{ metrics.detectors.gaze_tracker.accuracy_estimate|round(1) }}%</span>
+                    </div>
+                    <div class="accuracy-bar">
+                        {% set acc = metrics.detectors.gaze_tracker.accuracy_estimate %}
+                        <div class="accuracy-fill {% if acc > 90 %}high{% elif acc > 70 %}medium{% else %}low{% endif %}" 
+                             style="width: {{ acc }}%">
+                            {{ acc|round(1) }}%
+                        </div>
+                    </div>
+                    <div class="metric-row" style="margin-top: 15px;">
+                        <span class="metric-label">Latency</span>
+                        <span class="metric-value">{{ metrics.detectors.gaze_tracker.estimated_latency_ms }}ms</span>
+                    </div>
+                    <div class="latency-bar">
+                        <div class="latency-fill" style="width: 5%;"></div>
+                    </div>
+                    {% if metrics.detectors.gaze_tracker.violations %}
+                    <div class="violations-list">
+                        {% for v in metrics.detectors.gaze_tracker.violations %}
+                        <span class="violation-badge">{{ v }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Object Detector -->
+            <div class="detector-card">
+                <div class="detector-header object">
+                    <i class="fas fa-mobile-alt"></i> Object Detector
+                </div>
+                <div class="detector-body">
+                    <div class="metric-row">
+                        <span class="metric-label">Enabled</span>
+                        <span class="metric-value {% if metrics.detectors.object_detector.enabled %}enabled{% else %}disabled{% endif %}">
+                            {{ 'Yes' if metrics.detectors.object_detector.enabled else 'No' }}
+                        </span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Violations</span>
+                        <span class="metric-value">{{ metrics.detectors.object_detector.violations_count }}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Accuracy (Est.)</span>
+                        <span class="metric-value">{{ metrics.detectors.object_detector.accuracy_estimate|round(1) }}%</span>
+                    </div>
+                    <div class="accuracy-bar">
+                        {% set acc = metrics.detectors.object_detector.accuracy_estimate %}
+                        <div class="accuracy-fill {% if acc > 90 %}high{% elif acc > 70 %}medium{% else %}low{% endif %}" 
+                             style="width: {{ acc }}%">
+                            {{ acc|round(1) }}%
+                        </div>
+                    </div>
+                    <div class="metric-row" style="margin-top: 15px;">
+                        <span class="metric-label">Latency</span>
+                        <span class="metric-value">{{ metrics.detectors.object_detector.estimated_latency_ms }}ms</span>
+                    </div>
+                    <div class="latency-bar">
+                        <div class="latency-fill" style="width: 10%;"></div>
+                    </div>
+                    {% if metrics.detectors.object_detector.violations %}
+                    <div class="violations-list">
+                        {% for v in metrics.detectors.object_detector.violations %}
+                        <span class="violation-badge">{{ v }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Audio Analyzer -->
+            <div class="detector-card">
+                <div class="detector-header audio">
+                    <i class="fas fa-microphone"></i> Audio Analyzer
+                </div>
+                <div class="detector-body">
+                    <div class="metric-row">
+                        <span class="metric-label">Enabled</span>
+                        <span class="metric-value {% if metrics.detectors.audio_analyzer.enabled %}enabled{% else %}disabled{% endif %}">
+                            {{ 'Yes' if metrics.detectors.audio_analyzer.enabled else 'No' }}
+                        </span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Violations</span>
+                        <span class="metric-value">{{ metrics.detectors.audio_analyzer.violations_count }}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Accuracy (Est.)</span>
+                        <span class="metric-value">{{ metrics.detectors.audio_analyzer.accuracy_estimate|round(1) }}%</span>
+                    </div>
+                    <div class="accuracy-bar">
+                        {% set acc = metrics.detectors.audio_analyzer.accuracy_estimate %}
+                        <div class="accuracy-fill {% if acc > 90 %}high{% elif acc > 70 %}medium{% else %}low{% endif %}" 
+                             style="width: {{ acc }}%">
+                            {{ acc|round(1) }}%
+                        </div>
+                    </div>
+                    <div class="metric-row" style="margin-top: 15px;">
+                        <span class="metric-label">Latency</span>
+                        <span class="metric-value">{{ metrics.detectors.audio_analyzer.estimated_latency_ms }}ms</span>
+                    </div>
+                    <div class="latency-bar">
+                        <div class="latency-fill" style="width: 100%;"></div>
+                    </div>
+                    {% if metrics.detectors.audio_analyzer.violations %}
+                    <div class="violations-list">
+                        {% for v in metrics.detectors.audio_analyzer.violations %}
+                        <span class="violation-badge">{{ v }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        {% endif %}
+    </div>
+    
+    <script>
+        // Auto-refresh every 5 seconds if there's an active session
+        {% if metrics.session_info.total_frames > 0 %}
+        setInterval(function() {
+            fetch('/admin/metrics/json')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status !== 'no_active_session') {
+                        location.reload();
+                    }
+                })
+                .catch(err => console.log('Metrics refresh error:', err));
+        }, 5000);
+        {% endif %}
+    </script>
+</body>
+</html>
+

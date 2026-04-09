@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Label Sessions - Proctoring</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body>
+    <div class="admin-page">
+        <div class="page-header">
+            <h1><i class="fas fa-tag"></i> Label Violations for Sessions</h1>
+        </div>
+        
+        <nav class="nav-menu mb-4">
+            <a href="{{ url_for('admin_dashboard') }}"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+        </nav>
+        
+        <div class="card">
+            <div class="card-header">
+                <h2>Sessions ({{ sessions|length }})</h2>
+            </div>
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Session</th>
+                            <th>Total Violations</th>
+                            <th>Labeled</th>
+                            <th>% Labeled</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in sessions %}
+                        <tr>
+                            <td>{{ s.dir }}</td>
+                            <td>{{ s.total_violations }}</td>
+                            <td>{{ s.labeled_count }}</td>
+                            <td>{{ (s.labeled_count / s.total_violations * 100)|round(1) if s.total_violations > 0 else 0 }}%</td>
+                            <td><a href="{{ url_for('admin_label_session', session_dir=s.dir) }}" class="btn btn-primary">Label</a></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

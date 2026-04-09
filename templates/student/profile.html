@@ -1,28 +1,64 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>Student Profile</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+{% extends "base.html" %}
+{% block title %}Profile — Proctoring System{% endblock %}
+{% block body_class %}page-student{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+{% endblock %}
+{% block content %}
+<div class="student-wrap">
+    <div class="profile-hero">
+        <div class="profile-avatar"><i class="fas fa-user"></i></div>
+        <h1>{{ user.name }}</h1>
+        <p>{{ user.email }}</p>
+    </div>
 
-</head>
-<body>
-    <h1>Student Profile</h1>
+    <div class="profile-panel">
+        <h2><i class="fas fa-id-card"></i> Account</h2>
 
-    <p><strong>Name:</strong> {{ user.name }}</p>
-    <p><strong>Email:</strong> {{ user.email }}</p>
-    <p><strong>Role:</strong> {{ user.role }}</p>
+        <div class="info-grid">
+            <div class="info-item">
+                <div class="info-icon"><i class="fas fa-hashtag"></i></div>
+                <div>
+                    <div class="info-label">Student ID</div>
+                    <div class="info-value">{{ user.id }}</div>
+                </div>
+            </div>
+            <div class="info-item">
+                <div class="info-icon"><i class="fas fa-envelope"></i></div>
+                <div>
+                    <div class="info-label">Email</div>
+                    <div class="info-value">{{ user.email }}</div>
+                </div>
+            </div>
+            <div class="info-item">
+                <div class="info-icon"><i class="fas fa-user-tag"></i></div>
+                <div>
+                    <div class="info-label">Role</div>
+                    <div class="info-value">
+                        {% if user.role == 'admin' %}
+                        <span class="badge badge-danger">Admin</span>
+                        {% else %}
+                        <span class="badge badge-success">Student</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
 
-    <h2>Actions</h2>
-    <ul>
-        <li>
-            <a href="{{ url_for('start_exam', student_id=user.id, exam_id='DEMO') }}">
-                Start demo exam
-            </a>
-        </li>
-        <li>
-            <a href="{{ url_for('auth_login') }}">Logout</a>
-        </li>
-    </ul>
-</body>
-</html>
+        <div class="actions-section">
+            <h3>Quick actions</h3>
+            <div class="action-buttons">
+                <a href="/register_face/{{ user.id }}" class="btn btn-primary">
+                    <i class="fas fa-camera"></i> Register face
+                </a>
+                <a href="/start_exam/{{ user.id }}/DEMO" class="btn-start">
+                    <i class="fas fa-play"></i> Start demo exam
+                </a>
+                <a href="{{ url_for('logout') }}" class="btn-logout">
+                    <i class="fas fa-arrow-right-from-bracket"></i> Log out
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

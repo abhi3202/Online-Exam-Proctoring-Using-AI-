@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Exam Results - Proctoring System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .results-container {
+            max-width: 900px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        
+        .results-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            text-align: center;
+            color: white;
+            margin-bottom: 2rem;
+            animation: fadeInUp 0.5s ease;
+        }
+        
+        .results-header h1 {
+            color: white;
+            margin-bottom: 0.5rem;
+        }
+        
+        .score-card {
+            background: white;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            animation: fadeInUp 0.5s ease;
+            animation-delay: 0.1s;
+            animation-fill-mode: both;
+        }
+        
+        .score-display {
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .score-circle {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+        
+        .score-circle.passed {
+            background: linear-gradient(135deg, var(--success) 0%, #2f855a 100%);
+            color: white;
+        }
+        
+        .score-circle.failed {
+            background: linear-gradient(135deg, var(--danger) 0%, #c53030 100%);
+            color: white;
+        }
+        
+        .score-label {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+        
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        
+        .stat-box {
+            background: var(--gray-lightest);
+            border-radius: var(--radius);
+            padding: 1rem;
+            text-align: center;
+        }
+        
+        .stat-box .value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--dark);
+        }
+        
+        .stat-box .label {
+            font-size: 0.75rem;
+            color: var(--gray);
+            text-transform: uppercase;
+        }
+        
+        .stat-box.correct .value { color: var(--success); }
+        .stat-box.incorrect .value { color: var(--danger); }
+        .stat-box.unanswered .value { color: var(--warning); }
+        .stat-box.total .value { color: var(--primary); }
+        
+        .answers-section {
+            background: white;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+            padding: 2rem;
+            animation: fadeInUp 0.5s ease;
+            animation-delay: 0.2s;
+            animation-fill-mode: both;
+        }
+        
+        .answers-section h2 {
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--gray-lighter);
+        }
+        
+        .question-review {
+            background: var(--gray-lightest);
+            border-radius: var(--radius);
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid var(--gray);
+        }
+        
+        .question-review.correct {
+            border-left-color: var(--success);
+            background: var(--success-light);
+        }
+        
+        .question-review.incorrect {
+            border-left-color: var(--danger);
+            background: var(--danger-light);
+        }
+        
+        .question-review.unanswered {
+            border-left-color: var(--warning);
+            background: var(--warning-light);
+        }
+        
+        .question-review-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+        
+        .question-number {
+            font-weight: 600;
+        }
+        
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: var(--radius-full);
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .status-badge.correct {
+            background: var(--success);
+            color: white;
+        }
+        
+        .status-badge.incorrect {
+            background: var(--danger);
+            color: white;
+        }
+        
+        .status-badge.unanswered {
+            background: var(--warning);
+            color: #744210;
+        }
+        
+        .question-text {
+            margin-bottom: 0.75rem;
+            color: var(--dark);
+        }
+        
+        .answer-row {
+            font-size: 0.9rem;
+            margin: 0.25rem 0;
+        }
+        
+        .your-answer { color: var(--dark); }
+        .correct-answer { color: var(--success); font-weight: 500; }
+        
+        /* Violations Section */
+        .violations-section {
+            background: white;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+            padding: 2rem;
+            margin-top: 1.5rem;
+            animation: fadeInUp 0.5s ease;
+            animation-delay: 0.3s;
+            animation-fill-mode: both;
+        }
+        
+        .violations-summary {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .violation-stat {
+            background: var(--gray-lightest);
+            border-radius: var(--radius);
+            padding: 1rem;
+            text-align: center;
+        }
+        
+        .violation-stat .value {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        
+        .violation-stat.critical .value { color: #e53e3e; }
+        .violation-stat.high .value { color: #dd6b20; }
+        .violation-stat.medium .value { color: #d69e2e; }
+        .violation-stat.low .value { color: #38a169; }
+        
+        .violations-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .violation-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--gray-lighter);
+        }
+        
+        .violation-item:last-child { border-bottom: none; }
+        
+        .btn-home {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            border-radius: var(--radius);
+            font-weight: 600;
+            margin-top: 1.5rem;
+        }
+        
+        .btn-home:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+            color: white;
+        }
+        
+        @media (max-width: 768px) {
+            .stats-row, .violations-summary {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body style="background: var(--gray-lightest); padding: 0;">
+    <div class="results-container">
+        <!-- Header -->
+        <div class="results-header">
+            <h1><i class="fas fa-clipboard-check"></i> Exam Results</h1>
+            <p>Exam: <strong>{{ exam_id }}</strong> | Student: <strong>{{ student_id }}</strong></p>
+        </div>
+
+        <!-- Score Card -->
+        <div class="score-card">
+            <div class="score-display">
+                <div class="score-circle {{ 'passed' if score.passed else 'failed' }}">
+                    <span>{{ score.percentage }}%</span>
+                </div>
+                <div class="score-label">
+                    {{ 'PASSED' if score.passed else 'FAILED' }} - {{ score.marks_obtained }}/{{ score.total_marks }} marks
+                </div>
+                
+                <div class="stats-row">
+                    <div class="stat-box correct">
+                        <div class="value">{{ score.correct }}</div>
+                        <div class="label">Correct</div>
+                    <div class="stat-box incorrect">
+                        <div class="value">{{ score.incorrect }}</div>
+                        <div class="label">Incorrect</div>
+                    <div class="stat-box unanswered">
+                        <div class="value">{{ score.unanswered }}</div>
+                        <div class="label">Not Attempted</div>
+                    <div class="stat-box total">
+                        <div class="value">{{ score.total }}</div>
+                        <div class="label">Total</div>
+                </div>
+        </div>
+
+        <!-- Answers Review -->
+        <div class="answers-section">
+            <h2><i class="fas fa-list-ol"></i> Answer Review</h2>
+            
+            {% for q in questions %}
+            <div class="question-review {{ 'correct' if results[loop.index0].is_correct == true else ('incorrect' if results[loop.index0].is_correct == false else 'unanswered') }}">
+                <div class="question-review-header">
+                    <span class="question-number">Question {{ loop.index }}</span>
+                    {% if results[loop.index0].is_correct == true %}
+                    <span class="status-badge correct"><i class="fas fa-check"></i> Correct</span>
+                    {% elif results[loop.index0].is_correct == false %}
+                    <span class="status-badge incorrect"><i class="fas fa-times"></i> Incorrect</span>
+                    {% else %}
+                    <span class="status-badge unanswered"><i class="fas fa-minus"></i> Not Attempted</span>
+                    {% endif %}
+                </div>
+                
+                <div class="question-text">{{ q.text }}</div>
+                
+                {% if results[loop.index0].is_correct == false and results[loop.index0].your_answer is not none %}
+                <div class="answer-row your-answer">
+                    <i class="fas fa-times-circle"></i> Your Answer: {{ q.options[results[loop.index0].your_answer] }}
+                </div>
+                {% elif results[loop.index0].your_answer is not none %}
+                <div class="answer-row your-answer">
+                    <i class="fas fa-check-circle"></i> Your Answer: {{ q.options[results[loop.index0].your_answer] }}
+                </div>
+                {% else %}
+                <div class="answer-row" style="color: var(--gray);">
+                    <i class="fas fa-minus-circle"></i> Not Attempted
+                </div>
+                {% endif %}
+                
+                {% if results[loop.index0].is_correct == false %}
+                <div class="answer-row correct-answer">
+                    <i class="fas fa-check"></i> Correct Answer: {{ q.options[results[loop.index0].correct_answer] }}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Violations Summary -->
+        {% if violations.total > 0 %}
+        <div class="violations-section">
+            <h2><i class="fas fa-exclamation-triangle"></i> Violations During Exam</h2>
+            
+            <div class="violations-summary">
+                <div class="violation-stat critical">
+                    <div class="value">{{ violations.critical }}</div>
+                    <div class="label">Critical</div>
+                <div class="violation-stat high">
+                    <div class="value">{{ violations.high }}</div>
+                    <div class="label">High</div>
+                <div class="violation-stat medium">
+                    <div class="value">{{ violations.medium }}</div>
+                    <div class="label">Medium</div>
+                <div class="violation-stat low">
+                    <div class="value">{{ violations.low }}</div>
+                    <div class="label">Low</div>
+            </div>
+            
+            {% if violations.history %}
+            <h3 style="margin-bottom: 1rem;">Violation Details</h3>
+            <div class="violations-list">
+                {% for v in violations.history %}
+                <div class="violation-item">
+                    <div>
+                        <strong>{{ v.violation }}</strong>
+                        <span style="color: var(--gray); font-size: 0.875rem;">{{ v.timestamp }}</span>
+                    </div>
+                    <span class="badge badge-{{ 'danger' if v.severity == 'CRITICAL' else ('warning' if v.severity == 'HIGH' or v.severity == 'MEDIUM' else 'success') }}">
+                        {{ v.severity }}
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="score-card">
+            <div class="score-display">
+                <i class="fas fa-shield-alt" style="font-size: 3rem; color: var(--success); margin-bottom: 1rem;"></i>
+                <p style="color: var(--gray);">No violations recorded during this exam!</p>
+            </div>
+        {% endif %}
+
+        <div style="text-align: center;">
+            <a href="{{ url_for('student_profile') }}" class="btn-home">
+                <i class="fas fa-home"></i> Back to Profile
+            </a>
+        </div>
+</body>
+</html>
