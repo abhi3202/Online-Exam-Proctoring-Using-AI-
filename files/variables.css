@@ -1,0 +1,131 @@
+/* ============================================================
+   ProctorDesk — Design Tokens & CSS Variables
+   variables.css
+   ============================================================ */
+
+:root {
+  /* --- Background surfaces --- */
+  --color-background-primary:   #ffffff;
+  --color-background-secondary: #f5f5f3;
+  --color-background-tertiary:  #efefec;
+  --color-background-info:      #e6f1fb;
+  --color-background-success:   #eaf3de;
+  --color-background-warning:   #faeeda;
+  --color-background-danger:    #fcebeb;
+
+  /* --- Text colours --- */
+  --color-text-primary:   #1a1a18;
+  --color-text-secondary: #5f5e5a;
+  --color-text-tertiary:  #888780;
+  --color-text-info:      #0c447c;
+  --color-text-success:   #27500a;
+  --color-text-warning:   #633806;
+  --color-text-danger:    #791f1f;
+
+  /* --- Borders (alpha-based) --- */
+  --color-border-tertiary:  rgba(26, 26, 24, 0.12);
+  --color-border-secondary: rgba(26, 26, 24, 0.25);
+  --color-border-primary:   rgba(26, 26, 24, 0.40);
+  --color-border-info:      #85b7eb;
+  --color-border-success:   #97c459;
+  --color-border-warning:   #fac775;
+  --color-border-danger:    #f09595;
+
+  /* --- Semantic solid colours (for dots, fills, chart lines) --- */
+  --color-solid-green:  #1d9e75;
+  --color-solid-blue:   #378add;
+  --color-solid-amber:  #ef9f27;
+  --color-solid-red:    #e24b4a;
+  --color-solid-navy:   #185fa5;
+  --color-solid-coral:  #d85a30;
+  --color-solid-purple: #7f77dd;
+
+  /* --- Ramp stops (for badges, filled pills) --- */
+  /* Green */
+  --green-50: #eaf3de; --green-100: #c0dd97; --green-400: #639922;
+  --green-600: #3b6d11; --green-800: #27500a;
+  /* Blue */
+  --blue-50: #e6f1fb;  --blue-100: #b5d4f4; --blue-400: #378add;
+  --blue-600: #185fa5; --blue-800: #0c447c;
+  /* Amber */
+  --amber-50: #faeeda; --amber-100: #fac775; --amber-400: #ef9f27;
+  --amber-600: #854f0b; --amber-800: #633806;
+  /* Red */
+  --red-50: #fcebeb;   --red-100: #f7c1c1;  --red-400: #e24b4a;
+  --red-600: #a32d2d;  --red-800: #791f1f;
+  /* Teal */
+  --teal-50: #e1f5ee;  --teal-400: #1d9e75; --teal-800: #085041;
+  /* Purple */
+  --purple-50: #eeedfe; --purple-400: #7f77dd; --purple-800: #3c3489;
+  /* Gray */
+  --gray-50: #f1efe8;  --gray-200: #b4b2a9; --gray-600: #5f5e5a;
+
+  /* --- Typography --- */
+  --font-sans:  -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono:  "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  --font-serif: Georgia, "Times New Roman", serif;
+
+  /* --- Border radii --- */
+  --border-radius-sm: 4px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
+  --border-radius-xl: 16px;
+  --border-radius-full: 9999px;
+
+  /* --- Spacing scale --- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* --- Shadows (functional only — focus rings) --- */
+  --focus-ring: 0 0 0 3px rgba(55, 138, 221, 0.30);
+
+  /* --- Transitions --- */
+  --transition-fast: 120ms ease;
+  --transition-base: 180ms ease;
+
+  /* --- Z-index layers --- */
+  --z-base:    0;
+  --z-raised:  10;
+  --z-dropdown:100;
+  --z-overlay: 200;
+  --z-modal:   300;
+  --z-toast:   400;
+
+  /* --- Layout --- */
+  --topbar-height: 52px;
+  --sidebar-width: 220px;
+}
+
+/* Dark mode overrides */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background-primary:   #1c1c1a;
+    --color-background-secondary: #252522;
+    --color-background-tertiary:  #2c2c2a;
+    --color-background-info:      #042c53;
+    --color-background-success:   #173404;
+    --color-background-warning:   #412402;
+    --color-background-danger:    #501313;
+
+    --color-text-primary:   #f0ede8;
+    --color-text-secondary: #b4b2a9;
+    --color-text-tertiary:  #888780;
+    --color-text-info:      #b5d4f4;
+    --color-text-success:   #c0dd97;
+    --color-text-warning:   #fac775;
+    --color-text-danger:    #f7c1c1;
+
+    --color-border-tertiary:  rgba(240, 237, 232, 0.10);
+    --color-border-secondary: rgba(240, 237, 232, 0.22);
+    --color-border-primary:   rgba(240, 237, 232, 0.36);
+    --color-border-info:      #185fa5;
+    --color-border-success:   #3b6d11;
+    --color-border-warning:   #854f0b;
+    --color-border-danger:    #a32d2d;
+  }
+}

@@ -1,0 +1,248 @@
+/* ============================================================
+   ProctorDesk — Page-Level Styles
+   pages.css
+   ============================================================ */
+
+/* ============================================================
+   DASHBOARD — /dashboard
+   ============================================================ */
+
+.dashboard-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.dashboard-body {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+/* Candidates panel (left column) */
+.candidates-panel {
+  background: var(--color-background-primary);
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: var(--border-radius-lg);
+  padding: var(--space-4);
+}
+
+/* Right column vertical stack */
+.dashboard-aside {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* ============================================================
+   EXAM PAGE — /exam
+   ============================================================ */
+
+.exam-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-5);
+}
+
+.exam-topbar__left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.exam-topbar__right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* Main question column */
+.exam-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* Sidebar panel */
+.exam-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* Student info mini card at top of sidebar */
+.exam-student-card {
+  background: var(--color-background-primary);
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: var(--border-radius-lg);
+  padding: 14px var(--space-4);
+}
+
+.exam-progress-stats {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-2);
+}
+
+.exam-progress-stats span strong {
+  font-weight: 500;
+}
+
+/* Question palette card */
+.exam-palette-card {
+  background: var(--color-background-primary);
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: var(--border-radius-lg);
+  padding: 14px var(--space-4);
+}
+
+/* Section progress card */
+.exam-section-card {
+  background: var(--color-background-primary);
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: var(--border-radius-lg);
+  padding: 14px var(--space-4);
+}
+
+.exam-section-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: 7px;
+}
+
+.exam-section-row:last-child { margin-bottom: 0; }
+
+.exam-section-label {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  width: 50px;
+  flex-shrink: 0;
+}
+
+.exam-section-count {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  width: 24px;
+  text-align: right;
+}
+
+/* ============================================================
+   STUDENT PROFILE — /candidates/:id
+   ============================================================ */
+
+.profile-page { padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-4); }
+
+/* Two-column layout for profile content */
+.profile-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+/* Camera snapshot grid inside profile */
+.profile-snaps {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-2);
+}
+
+.profile-snap {
+  background: var(--color-background-secondary);
+  border-radius: var(--border-radius-md);
+  aspect-ratio: 4 / 3;
+  position: relative;
+  border: 0.5px solid var(--color-border-tertiary);
+  overflow: hidden;
+}
+
+.profile-snap--flagged {
+  border: 1.5px solid var(--red-400);
+}
+
+/* Stats row below palette */
+.palette-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.palette-stat {
+  background: var(--color-background-secondary);
+  border-radius: var(--border-radius-md);
+  padding: var(--space-2) var(--space-3);
+  text-align: center;
+}
+
+.palette-stat__value {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.palette-stat__label {
+  font-size: 10px;
+  color: var(--color-text-tertiary);
+  margin-top: 2px;
+}
+
+/* Incident row in log */
+.incident-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: var(--space-2) 0;
+  border-bottom: 0.5px solid var(--color-border-tertiary);
+}
+
+.incident-row:last-child { border-bottom: none; padding-bottom: 0; }
+
+.incident-row__text {
+  flex: 1;
+  font-size: 12px;
+  color: var(--color-text-primary);
+}
+
+.incident-row__time {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+}
+
+/* Proctor note area */
+.proctor-note-area {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: 14px;
+  padding-top: var(--space-3);
+  border-top: 0.5px solid var(--color-border-tertiary);
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+@media (max-width: 1024px) {
+  .dashboard-body { grid-template-columns: 1fr; }
+  .dashboard-aside { flex-direction: row; flex-wrap: wrap; }
+  .dashboard-aside > * { flex: 1 1 280px; }
+  .dashboard-metrics { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .exam-body { grid-template-columns: 1fr; }
+  .profile-body { grid-template-columns: 1fr; }
+  .profile-hero { grid-template-columns: auto 1fr; }
+  .profile-hero > *:last-child { grid-column: 1 / -1; }
+}
+
+@media (max-width: 768px) {
+  :root { --sidebar-width: 0px; }
+  .app-shell { grid-template-columns: 1fr; }
+  .app-sidebar { display: none; }
+  .app-main { grid-column: 1; }
+  .dashboard-metrics { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .exam-body { grid-template-columns: 1fr; }
+  .cam-grid--3x3 { grid-template-columns: repeat(2, 1fr); }
+}

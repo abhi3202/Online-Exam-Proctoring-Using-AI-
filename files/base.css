@@ -1,0 +1,207 @@
+/* ============================================================
+   ProctorDesk — Reset, Base Styles & Typography
+   base.css
+   ============================================================ */
+
+/* --- Reset --- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+  tab-size: 4;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--color-text-primary);
+  background-color: var(--color-background-tertiary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+img, svg {
+  display: block;
+  max-width: 100%;
+}
+
+button, input, textarea, select {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+a {
+  color: var(--color-text-info);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+ul, ol {
+  list-style: none;
+}
+
+/* --- Typography scale --- */
+h1 { font-size: 22px; font-weight: 500; line-height: 1.3; }
+h2 { font-size: 18px; font-weight: 500; line-height: 1.35; }
+h3 { font-size: 16px; font-weight: 500; line-height: 1.4; }
+h4 { font-size: 14px; font-weight: 500; line-height: 1.45; }
+h5, h6 { font-size: 13px; font-weight: 500; line-height: 1.5; }
+
+p { line-height: 1.7; }
+
+small { font-size: 12px; }
+
+code, pre {
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+pre {
+  background: var(--color-background-secondary);
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: var(--border-radius-md);
+  padding: var(--space-3) var(--space-4);
+  overflow-x: auto;
+}
+
+/* Accessibility: visually hidden but screen-reader visible */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* --- Scrollbar --- */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-secondary);
+  border-radius: var(--border-radius-full);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--color-border-primary); }
+
+/* --- Focus management --- */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* --- Selection --- */
+::selection {
+  background: var(--blue-50);
+  color: var(--blue-800);
+}
+
+/* ============================================================
+   Layout Shell
+   ============================================================ */
+
+/* Full-page app shell: topbar + sidebar + main */
+.app-shell {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 1fr;
+  grid-template-rows: var(--topbar-height) 1fr;
+  min-height: 100vh;
+  background: var(--color-background-tertiary);
+}
+
+/* Topbar spans full width */
+.app-topbar {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  position: sticky;
+  top: 0;
+  z-index: var(--z-raised);
+  background: var(--color-background-primary);
+  border-bottom: 0.5px solid var(--color-border-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-5);
+  height: var(--topbar-height);
+}
+
+.app-sidebar {
+  grid-column: 1;
+  grid-row: 2;
+  background: var(--color-background-primary);
+  border-right: 0.5px solid var(--color-border-tertiary);
+  overflow-y: auto;
+}
+
+.app-main {
+  grid-column: 2;
+  grid-row: 2;
+  padding: var(--space-5);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* Exam page: no sidebar, single column */
+.exam-shell {
+  display: grid;
+  grid-template-rows: var(--topbar-height) 1fr;
+  min-height: 100vh;
+  background: var(--color-background-tertiary);
+}
+
+.exam-shell .app-topbar {
+  grid-column: 1;
+}
+
+.exam-body {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  align-items: start;
+}
+
+/* --- Generic grids --- */
+.grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: var(--space-4); }
+.grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: var(--space-4); }
+.grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: var(--space-3); }
+
+/* --- Flex helpers --- */
+.flex        { display: flex; }
+.flex-col    { display: flex; flex-direction: column; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.gap-1  { gap: var(--space-1); }
+.gap-2  { gap: var(--space-2); }
+.gap-3  { gap: var(--space-3); }
+.gap-4  { gap: var(--space-4); }
+
+/* --- Divider --- */
+.divider {
+  height: 0.5px;
+  background: var(--color-border-tertiary);
+  border: none;
+  margin: var(--space-4) 0;
+}
+
+.divider-v {
+  width: 0.5px;
+  background: var(--color-border-secondary);
+  align-self: stretch;
+}

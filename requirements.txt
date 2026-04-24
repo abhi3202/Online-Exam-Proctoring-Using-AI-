@@ -1,8 +1,8 @@
 Flask==3.0.3
 Werkzeug==3.0.3
 opencv-python==4.10.0.82
-ultralytics==8.3.5
-deepface==0.0.101
+ultralytics
+deepface
 mediapipe==0.10.18
 pyaudio==0.2.11
 numpy==1.26.4
@@ -12,4 +12,3 @@ pandas==2.2.3
 matplotlib==3.9.2
 openpyxl==3.1.5
 sqlalchemy==2.0.35
-

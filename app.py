@@ -18,6 +18,7 @@ app = Flask(__name__)
 proctoring = None
 camera = None
 proctoring_status = {}  # {f"{student_id}_{exam_id}": {"status": "starting|active|error", "start_time": ts}}
+live_metrics_cache = {}  # {f"{student_id}_{exam_id}": {"metrics": dict, "last_updated": ts, "status": "active|completed"}}
 
 app.secret_key = "change-me"
 
@@ -96,6 +97,17 @@ def generate_frames():
                     proctoring._handle_audio_violations(audio_res)
                 except Exception as e:
                     logger.debug(f"Audio error: {e}")
+
+            # Update live metrics cache for admin monitoring
+            try:
+                session_key = f"{proctoring.student_id}_{proctoring.exam_id}"
+                live_metrics_cache[session_key] = {
+                    "metrics": proctoring.get_metrics(),
+                    "last_updated": time.time(),
+                    "status": "active"
+                }
+            except Exception as cache_err:
+                logger.debug(f"Live metrics cache update error: {cache_err}")
 
             display = proctoring.draw_combined_results(frame.copy(), results)
 
@@ -344,8 +356,10 @@ def admin_exam_results(exam_id, student_id):
             violations["low"] * 1
         )
     
-    final_percentage = max(0, raw_percentage - violations["penalty"])
+
+    final_percentage = raw_percentage - violations["penalty"]
     passed = final_percentage >= PASSING_PERCENTAGE
+
     
     if violations["total"] > 0:
         if violations["critical"] > 0:
@@ -429,6 +443,13 @@ def start_proctoring(student_id, exam_id):
         
         proctoring_status[session_key]["status"] = "active"
         
+        # Initialize live metrics cache entry
+        live_metrics_cache[session_key] = {
+            "metrics": proctoring.get_metrics(),
+            "last_updated": time.time(),
+            "status": "active"
+        }
+        
         logger.info(f"Proctoring started for {student_id} - {exam_id}")
         
         return jsonify({"status": "success", "message": "Proctoring started"})
@@ -459,6 +480,12 @@ def submit_exam(student_id, exam_id):
         camera.release()
         camera = None
     
+    # Mark session as completed in live metrics cache
+    session_key = f"{student_id}_{exam_id}"
+    if session_key in live_metrics_cache:
+        live_metrics_cache[session_key]["status"] = "completed"
+        live_metrics_cache[session_key]["last_updated"] = time.time()
+
     proctoring = None
 
     return jsonify({"status": "ok"})
@@ -908,44 +935,185 @@ def admin_bulk_label(session_dir):
 
 @app.route("/admin/metrics_advanced")
 def admin_metrics_advanced():
-    """Advanced ML metrics from human labels."""
+    """Advanced ML metrics from all violation logs and human labels."""
     user = session.get("user")
     if not user or user.get("role") != "admin":
         return redirect(url_for("auth_login"))
     
     import pandas as pd
-    from sklearn.metrics import confusion_matrix, precision_recall_fscore_support
+    from sklearn.metrics import confusion_matrix, precision_recall_fscore_support, accuracy_score
+    
+    # Step 1: Load all violation logs from logs folder
+    logs_root = os.path.join("logs")
+    all_violations = []
+    session_stats = []
+    
+    if os.path.isdir(logs_root):
+        for name in os.listdir(logs_root):
+            if not name.startswith("session_"):
+                continue
+            session_dir = os.path.join(logs_root, name)
+            data = load_session_log(session_dir)
+            if data and "violation_history" in data:
+                violations = data.get("violation_history", [])
+                all_violations.extend(violations)
+                session_stats.append({
+                    "session": name,
+                    "total_violations": len(violations),
+                    "by_severity": data.get("violation_summary", {}).get("by_severity", {})
+                })
+    
+    # Step 2: Aggregate violation counts from logs
+    violation_counts = {}
+    severity_counts = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
+    
+    for v in all_violations:
+        vtype = v.get("violation", v.get("violation_type", "UNKNOWN"))
+        severity = v.get("severity", "UNKNOWN")
+        violation_counts[vtype] = violation_counts.get(vtype, 0) + 1
+        if severity in severity_counts:
+            severity_counts[severity] += 1
+    
+    # Step 3: Load human labels from database
     labels = [dict(l) for l in get_all_labels()]
-    if not labels:
-        return render_template("admin/metrics_advanced.html", error="No labels found. Label some violations first!")
     
-    df = pd.DataFrame(labels)
-    if df.empty or 'violation_type' not in df.columns or 'human_true' not in df.columns:
-        return render_template("admin/metrics_advanced.html", error="No valid labels data available. Label some violations first!")
+    # Step 4: Compute ML metrics from labels
+    ml_metrics = {}
+    overall_precision = 0.0
+    overall_accuracy = 0.0
     
-    metrics = {}
-    for violation_type in df['violation_type'].unique():
-        type_labels = df[df['violation_type'] == violation_type]
-        if len(type_labels) > 0:
-            y_true = type_labels['human_true'].astype(int)
-            # y_pred = 1 for all (logged as violation)
-            y_pred = [1] * len(y_true)
+    if labels:
+        df = pd.DataFrame(labels)
+        if not df.empty and 'violation_type' in df.columns and 'human_true' in df.columns:
+            # Overall precision and accuracy
+            overall_precision = df['human_true'].mean()
+            y_true_all = df['human_true'].astype(int)
+            y_pred_all = [1] * len(y_true_all)
+            overall_accuracy = accuracy_score(y_true_all, y_pred_all)
             
-            cm = confusion_matrix(y_true, y_pred)
-            precision, recall, f1, _ = precision_recall_fscore_support(y_true, y_pred, average='binary', zero_division=0)
-            
-            metrics[violation_type] = {
-                'total_labeled': len(type_labels),
-                'true_positives': int(cm[1][1]) if len(cm) > 1 else 0,
-                'false_positives': int(cm[0][1]) if len(cm) > 1 else 0,
-                'precision': precision,
-                'recall': recall,
-                'f1': f1,
-                'confusion_matrix': cm.tolist()
-            }
+            for violation_type in df['violation_type'].unique():
+                type_labels = df[df['violation_type'] == violation_type]
+                if len(type_labels) > 0:
+                    y_true = type_labels['human_true'].astype(int)
+                    y_pred = [1] * len(y_true)  # All logged as violations
+                    
+                    cm = confusion_matrix(y_true, y_pred)
+                    precision, recall, f1, _ = precision_recall_fscore_support(
+                        y_true, y_pred, average='binary', zero_division=0
+                    )
+                    acc = accuracy_score(y_true, y_pred)
+                    
+                    # Extract confusion matrix values safely
+                    tn = int(cm[0][0]) if len(cm) > 0 and len(cm[0]) > 0 else 0
+                    fp = int(cm[0][1]) if len(cm) > 0 and len(cm[0]) > 1 else 0
+                    fn = int(cm[1][0]) if len(cm) > 1 and len(cm[1]) > 0 else 0
+                    tp = int(cm[1][1]) if len(cm) > 1 and len(cm[1]) > 1 else 0
+                    
+                    ml_metrics[violation_type] = {
+                        'total_labeled': len(type_labels),
+                        'true_positives': tp,
+                        'false_positives': fp,
+                        'true_negatives': tn,
+                        'false_negatives': fn,
+                        'accuracy': acc,
+                        'precision': precision,
+                        'recall': recall,
+                        'f1': f1,
+                        'confusion_matrix': cm.tolist()
+                    }
     
-    overall_precision = df['human_true'].mean()
-    return render_template("admin/metrics_advanced.html", metrics=metrics, overall_precision=overall_precision)
+    # Step 5: Build comprehensive report
+    report = {
+        'total_sessions_analyzed': len(session_stats),
+        'total_violations_logged': len(all_violations),
+        'violation_counts': violation_counts,
+        'severity_counts': severity_counts,
+        'session_stats': session_stats,
+        'ml_metrics': ml_metrics,
+        'overall_precision': overall_precision,
+        'overall_accuracy': overall_accuracy,
+        'total_labels': len(labels),
+        'labeled_violation_types': list(ml_metrics.keys())
+    }
+    
+    return render_template("admin/metrics_advanced.html", report=report, metrics=ml_metrics, overall_precision=overall_precision, overall_accuracy=overall_accuracy)
+
+@app.route("/admin/live_monitor")
+def admin_live_monitor():
+    """Live monitoring dashboard showing all students' exam metrics."""
+    user = session.get("user")
+    if not user or user.get("role") != "admin":
+        return redirect(url_for("auth_login"))
+
+    # Gather active sessions from cache
+    active_sessions = []
+    for session_key, cache_entry in live_metrics_cache.items():
+        parts = session_key.rsplit("_", 1)
+        if len(parts) == 2:
+            student_id, exam_id = parts
+        else:
+            student_id, exam_id = session_key, "unknown"
+        active_sessions.append({
+            "session_key": session_key,
+            "student_id": student_id,
+            "exam_id": exam_id,
+            "status": cache_entry.get("status", "unknown"),
+            "last_updated": cache_entry.get("last_updated", 0),
+            "metrics": cache_entry.get("metrics", {})
+        })
+
+    # Sort: active first, then by last updated
+    active_sessions.sort(key=lambda s: (0 if s["status"] == "active" else 1, -s["last_updated"]))
+
+    # Gather recent completed sessions from logs for context
+    recent_logs = []
+    logs_root = os.path.join("logs")
+    if os.path.isdir(logs_root):
+        for name in os.listdir(logs_root):
+            if not name.startswith("session_"):
+                continue
+            session_dir = os.path.join(logs_root, name)
+            data = load_session_log(session_dir)
+            if data:
+                recent_logs.append({
+                    "student_id": data.get("student_id"),
+                    "exam_id": data.get("exam_id"),
+                    "session_start": data.get("session_start"),
+                    "session_end": data.get("session_end"),
+                    "summary": data.get("violation_summary", {})
+                })
+    recent_logs.sort(key=lambda s: s.get("session_start", ""), reverse=True)
+    recent_logs = recent_logs[:10]
+
+    return render_template("admin/live_monitor.html",
+                           active_sessions=active_sessions,
+                           recent_logs=recent_logs)
+
+@app.route("/admin/live_monitor/json")
+def admin_live_monitor_json():
+    """JSON endpoint for live monitor AJAX polling."""
+    user = session.get("user")
+    if not user or user.get("role") != "admin":
+        return jsonify({"error": "Unauthorized"}), 401
+
+    sessions = []
+    for session_key, cache_entry in live_metrics_cache.items():
+        parts = session_key.rsplit("_", 1)
+        if len(parts) == 2:
+            student_id, exam_id = parts
+        else:
+            student_id, exam_id = session_key, "unknown"
+        sessions.append({
+            "session_key": session_key,
+            "student_id": student_id,
+            "exam_id": exam_id,
+            "status": cache_entry.get("status", "unknown"),
+            "last_updated": cache_entry.get("last_updated", 0),
+            "metrics": cache_entry.get("metrics", {})
+        })
+
+    sessions.sort(key=lambda s: (0 if s["status"] == "active" else 1, -s["last_updated"]))
+    return jsonify({"sessions": sessions, "count": len(sessions)})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True, threaded=True)

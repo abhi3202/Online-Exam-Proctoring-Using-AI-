@@ -9,6 +9,7 @@
         <a href="{{ url_for('admin_dashboard') }}" class="{{ 'active' if request.endpoint == 'admin_dashboard' else '' }}"><i class="bi bi-grid-1x2-fill"></i> Dashboard</a>
         <a href="{{ url_for('admin_sessions') }}" class="{{ 'active' if request.endpoint == 'admin_sessions' else '' }}"><i class="bi bi-list-ul"></i> Sessions</a>
         <a href="{{ url_for('admin_metrics') }}" class="{{ 'active' if request.endpoint in ('admin_metrics', 'admin_metrics_json') else '' }}"><i class="bi bi-activity"></i> Live metrics</a>
+        <a href="{{ url_for('admin_live_monitor') }}" class="{{ 'active' if request.endpoint in ('admin_live_monitor', 'admin_live_monitor_json') else '' }}"><i class="bi bi-broadcast"></i> Live monitor</a>
         <a href="/admin/metrics_advanced" class="{{ 'active' if request.endpoint == 'admin_metrics_advanced' else '' }}"><i class="bi bi-graph-up-arrow"></i> Analytics</a>
         <span class="app-nav-section">Records</span>
         <a href="{{ url_for('admin_reports') }}" class="{{ 'active' if request.endpoint == 'admin_reports' else '' }}"><i class="bi bi-exclamation-triangle"></i> Violations</a>

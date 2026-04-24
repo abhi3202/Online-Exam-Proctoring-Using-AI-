@@ -46,11 +46,16 @@
         </div>
         {% else %}
         
-        <!-- Overall Precision -->
+        <!-- Overall Precision & Accuracy -->
         <div class="overall-precision {% if overall_precision > 0.85 %}excellent{% elif overall_precision > 0.7 %}good{% elif overall_precision > 0.5 %}fair{% else %}poor{% endif %}">
-            📊 Overall Precision: {{ (overall_precision * 100)|round(1) }}% 
+            📊 Overall Precision: {{ (overall_precision * 100)|round(1) }}%
             <span class="grade-badge {% if overall_precision > 0.85 %}excellent{% elif overall_precision > 0.7 %}good{% elif overall_precision > 0.5 %}fair{% else %}poor{% endif %}">
                 {% if overall_precision > 0.85 %}Excellent{% elif overall_precision > 0.7 %}Good{% elif overall_precision > 0.5 %}Fair{% else %}Poor{% endif %}
+            </span>
+            &nbsp;|&nbsp;
+            🎯 Overall Accuracy: {{ (overall_accuracy * 100)|round(1) }}%
+            <span class="grade-badge {% if overall_accuracy > 0.85 %}excellent{% elif overall_accuracy > 0.7 %}good{% elif overall_accuracy > 0.5 %}fair{% else %}poor{% endif %}">
+                {% if overall_accuracy > 0.85 %}Excellent{% elif overall_accuracy > 0.7 %}Good{% elif overall_accuracy > 0.5 %}Fair{% else %}Poor{% endif %}
             </span>
         </div>
 

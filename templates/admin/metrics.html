@@ -312,8 +312,9 @@
             </a>
         </nav>
         
-        {% if metrics.session_info.total_frames == 0 %}
+        {% if metrics.get('session_info', {}).get('total_frames', 0) == 0 %}
         <div class="no-session">
+
             <i class="fas fa-video-slash"></i>
             <p>No active proctoring session</p>
             <p style="font-size: 14px;">Metrics will display when a student starts an exam</p>
@@ -589,4 +590,3 @@
     </script>
 </body>
 </html>
-

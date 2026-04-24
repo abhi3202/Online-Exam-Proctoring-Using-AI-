@@ -439,4 +439,3 @@ class ProctoringSystem:
             },
             "config": self.config
         }
-

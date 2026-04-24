@@ -307,4 +307,3 @@
         setInterval(pollForWarnings, 2000);
     }
 })();
-

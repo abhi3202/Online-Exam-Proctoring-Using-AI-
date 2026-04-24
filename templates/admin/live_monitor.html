@@ -1,0 +1,401 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Live Monitor — Proctoring System{% endblock %}
+{% block admin_head_extra %}
+<style>
+  .monitor-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+  }
+  .student-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    padding: 1.25rem;
+    border-left: 5px solid #e5e7eb;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .student-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.1);
+  }
+  .student-card.active {
+    border-left-color: #10b981;
+  }
+  .student-card.completed {
+    border-left-color: #6b7280;
+  }
+  .student-card.error {
+    border-left-color: #ef4444;
+  }
+  .card-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+  }
+  .student-name {
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: #111827;
+  }
+  .exam-id {
+    font-size: 0.8rem;
+    color: #6b7280;
+    font-weight: 500;
+  }
+  .status-badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .status-badge.active {
+    background: #d1fae5;
+    color: #065f46;
+  }
+  .status-badge.completed {
+    background: #e5e7eb;
+    color: #374151;
+  }
+  .status-badge.error {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+  .metrics-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+    margin: 0.75rem 0;
+  }
+  .metric-chip {
+    background: #f9fafb;
+    border-radius: 8px;
+    padding: 0.5rem;
+    text-align: center;
+  }
+  .metric-chip .value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #111827;
+  }
+  .metric-chip .label {
+    font-size: 0.65rem;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin-top: 2px;
+  }
+  .severity-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 0.5rem;
+  }
+  .severity-pill {
+    flex: 1;
+    border-radius: 6px;
+    padding: 4px 0;
+    text-align: center;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: white;
+  }
+  .severity-pill.critical { background: #dc2626; }
+  .severity-pill.high { background: #ea580c; }
+  .severity-pill.medium { background: #ca8a04; }
+  .severity-pill.low { background: #16a34a; }
+  .severity-pill.zero { background: #e5e7eb; color: #9ca3af; }
+  .perf-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #f3f4f6;
+  }
+  .last-seen {
+    font-size: 0.7rem;
+    color: #9ca3af;
+    margin-top: 0.25rem;
+  }
+  .empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: #6b7280;
+  }
+  .empty-state i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    display: block;
+    color: #d1d5db;
+  }
+  .refresh-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    color: #6b7280;
+  }
+  .dot-pulse {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #10b981;
+    animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+  .recent-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+  .recent-table th,
+  .recent-table td {
+    padding: 0.6rem 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #f3f4f6;
+  }
+  .recent-table th {
+    font-weight: 600;
+    color: #374151;
+    background: #f9fafb;
+  }
+  .section-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    color: #111827;
+  }
+</style>
+{% endblock %}
+{% block admin_title %}Live Monitor{% endblock %}
+{% block admin_subtitle %}Real-time exam metrics for all students{% endblock %}
+{% block admin_header_extra %}
+<div class="refresh-indicator">
+  <span class="dot-pulse"></span>
+  <span id="refresh-label">Updating every 3s</span>
+</div>
+{% endblock %}
+{% block admin_body %}
+
+<div class="card shadow" style="margin-bottom: 1.5rem;">
+  <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
+    <h3 class="card-title"><i class="bi bi-broadcast"></i> Active &amp; Recent Sessions</h3>
+    <span class="badge badge-primary" id="session-count">{{ active_sessions|length }}</span>
+  </div>
+  <div class="card-body">
+    {% if active_sessions %}
+    <div class="monitor-grid" id="monitor-grid">
+      {% for s in active_sessions %}
+      {% set m = s.metrics %}
+      {% set info = m.session_info or {} %}
+      {% set v = m.violations or {} %}
+      {% set sev = v.by_severity or {} %}
+      {% set perf = m.performance or {} %}
+      <div class="student-card {{ s.status }}" data-session="{{ s.session_key }}">
+        <div class="card-header-row">
+          <div>
+            <div class="student-name"><i class="bi bi-person-circle"></i> {{ s.student_id }}</div>
+            <div class="exam-id">{{ s.exam_id }}</div>
+          </div>
+          <span class="status-badge {{ s.status }}">{{ s.status }}</span>
+        </div>
+
+        <div class="metrics-row">
+          <div class="metric-chip">
+            <div class="value">{{ v.total or 0 }}</div>
+            <div class="label">Violations</div>
+          </div>
+          <div class="metric-chip">
+            <div class="value">{{ perf.frames_per_second or 0 }}</div>
+            <div class="label">FPS</div>
+          </div>
+          <div class="metric-chip">
+            <div class="value">{{ perf.avg_frame_latency_ms or 0 }}ms</div>
+            <div class="label">Latency</div>
+          </div>
+          <div class="metric-chip">
+            <div class="value">{{ info.duration_seconds or 0 }}s</div>
+            <div class="label">Duration</div>
+          </div>
+        </div>
+
+        <div class="severity-row">
+          <div class="severity-pill {{ 'zero' if (sev.CRITICAL or 0) == 0 else 'critical' }}">
+            {{ sev.CRITICAL or 0 }} Critical
+          </div>
+          <div class="severity-pill {{ 'zero' if (sev.HIGH or 0) == 0 else 'high' }}">
+            {{ sev.HIGH or 0 }} High
+          </div>
+          <div class="severity-pill {{ 'zero' if (sev.MEDIUM or 0) == 0 else 'medium' }}">
+            {{ sev.MEDIUM or 0 }} Med
+          </div>
+          <div class="severity-pill {{ 'zero' if (sev.LOW or 0) == 0 else 'low' }}">
+            {{ sev.LOW or 0 }} Low
+          </div>
+        </div>
+
+        <div class="perf-row">
+          <span>Frames: {{ info.total_frames or 0 }}</span>
+          <span>Rate: {{ '%.2f'|format((perf.violation_rate or 0)*100) }}%</span>
+        </div>
+        <div class="last-seen">Last updated: <span class="ts" data-ts="{{ s.last_updated }}">—</span></div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state" id="empty-state">
+      <i class="bi bi-broadcast"></i>
+      <p>No active or recent sessions in metrics cache</p>
+      <p style="font-size: 0.8rem;">Start a student exam to see live metrics here</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card shadow">
+  <div class="card-header">
+    <h3 class="card-title"><i class="bi bi-clock-history"></i> Recent Completed Sessions (from logs)</h3>
+  </div>
+  <div class="card-body" style="padding-top:0.5rem;">
+    {% if recent_logs %}
+    <div class="table-responsive">
+      <table class="recent-table">
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Exam</th>
+            <th>Started</th>
+            <th>Violations</th>
+            <th>Severity</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in recent_logs %}
+          {% set summary = log.summary or {} %}
+          {% set sev = summary.by_severity or {} %}
+          <tr>
+            <td><i class="bi bi-person"></i> {{ log.student_id }}</td>
+            <td>{{ log.exam_id }}</td>
+            <td>{{ log.session_start[:16] if log.session_start else '—' }}</td>
+            <td>{{ summary.total_violations or 0 }}</td>
+            <td>
+              <span class="badge bg-danger">{{ sev.CRITICAL or 0 }}</span>
+              <span class="badge bg-warning">{{ sev.HIGH or 0 }}</span>
+              <span class="badge bg-info">{{ sev.MEDIUM or 0 }}</span>
+              <span class="badge bg-secondary">{{ sev.LOW or 0 }}</span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <i class="bi bi-folder"></i>
+      <p>No session logs found yet</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+  function formatTimeAgo(ts) {
+    if (!ts) return '—';
+    const diff = Math.floor((Date.now() / 1000) - ts);
+    if (diff < 5) return 'just now';
+    if (diff < 60) return diff + 's ago';
+    if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+    return Math.floor(diff / 3600) + 'h ago';
+  }
+
+  function updateTimestamps() {
+    document.querySelectorAll('.ts[data-ts]').forEach(el => {
+      el.textContent = formatTimeAgo(parseFloat(el.dataset.ts));
+    });
+  }
+
+  function renderCard(s) {
+    const m = s.metrics || {};
+    const info = m.session_info || {};
+    const v = m.violations || {};
+    const sev = v.by_severity || {};
+    const perf = m.performance || {};
+
+    const sevClass = (n) => (n || 0) === 0 ? 'zero' : 
+      {CRITICAL:'critical', HIGH:'high', MEDIUM:'medium', LOW:'low'}[n] || 'zero';
+
+    return `
+      <div class="student-card ${s.status}" data-session="${s.session_key}">
+        <div class="card-header-row">
+          <div>
+            <div class="student-name"><i class="bi bi-person-circle"></i> ${s.student_id}</div>
+            <div class="exam-id">${s.exam_id}</div>
+          </div>
+          <span class="status-badge ${s.status}">${s.status}</span>
+        </div>
+        <div class="metrics-row">
+          <div class="metric-chip"><div class="value">${v.total || 0}</div><div class="label">Violations</div></div>
+          <div class="metric-chip"><div class="value">${perf.frames_per_second || 0}</div><div class="label">FPS</div></div>
+          <div class="metric-chip"><div class="value">${perf.avg_frame_latency_ms || 0}ms</div><div class="label">Latency</div></div>
+          <div class="metric-chip"><div class="value">${info.duration_seconds || 0}s</div><div class="label">Duration</div></div>
+        </div>
+        <div class="severity-row">
+          <div class="severity-pill ${sevClass('CRITICAL')}">${sev.CRITICAL || 0} Critical</div>
+          <div class="severity-pill ${sevClass('HIGH')}">${sev.HIGH || 0} High</div>
+          <div class="severity-pill ${sevClass('MEDIUM')}">${sev.MEDIUM || 0} Med</div>
+          <div class="severity-pill ${sevClass('LOW')}">${sev.LOW || 0} Low</div>
+        </div>
+        <div class="perf-row">
+          <span>Frames: ${info.total_frames || 0}</span>
+          <span>Rate: ${((perf.violation_rate || 0) * 100).toFixed(2)}%</span>
+        </div>
+        <div class="last-seen">Last updated: <span class="ts" data-ts="${s.last_updated}">${formatTimeAgo(s.last_updated)}</span></div>
+      </div>
+    `;
+  }
+
+  function pollLiveMonitor() {
+    fetch('/admin/live_monitor/json')
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) return;
+        const grid = document.getElementById('monitor-grid');
+        const empty = document.getElementById('empty-state');
+        const countBadge = document.getElementById('session-count');
+
+        if (data.sessions && data.sessions.length > 0) {
+          if (empty) empty.style.display = 'none';
+          if (grid) {
+            grid.innerHTML = data.sessions.map(renderCard).join('');
+          }
+          if (countBadge) countBadge.textContent = data.count;
+        } else {
+          if (grid) grid.innerHTML = '';
+          if (empty) empty.style.display = 'block';
+          if (countBadge) countBadge.textContent = '0';
+        }
+        updateTimestamps();
+      })
+      .catch(() => {
+        document.getElementById('refresh-label').textContent = 'Update failed';
+      });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    updateTimestamps();
+    setInterval(updateTimestamps, 5000);
+    setInterval(pollLiveMonitor, 3000);
+  });
+</script>
+{% endblock %}
+

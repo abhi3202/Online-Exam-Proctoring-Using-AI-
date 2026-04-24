@@ -1,4 +1,4 @@
-# 🚀 AI Proctoring System - Complete Documentation
+ # 🚀 AI-Powered Multi-Modal Proctoring System for Real-Time Cheating Detection in Online Examinations Using YOLOv8 and Gaze Tracking - Complete Documentation (IEEE Paper Ready)
 
 ## 🎓 System Overview
 
@@ -94,7 +94,23 @@ show_metrics.py: Flask dashboard
 compute_metrics_now.py: Live sklearn metrics
 ```
 
-## 🛠 Setup & Run
+## Docker Deployment
+
+```dockerfile
+FROM python:3.10-slim
+COPY . /app
+WORKDIR /app
+RUN pip install -r requirements.txt
+EXPOSE 5000
+CMD ["gunicorn", "app:app", "-w", "4"]
+```
+
+```bash
+docker build -t proctoring .
+docker run -p 5000:5000 proctoring
+```
+
+## 🛠 Setup & Run (Native)
 
 ```bash
 # 1. Install deps
@@ -108,7 +124,7 @@ python app.py
 
 # 4. Production
 gunicorn app:app -w 4 --threads 8
-```
+``` 
 
 **Ports:** 5000 (main) | Video stream auto-threads
 
@@ -145,6 +161,4 @@ Human labels = Ground truth → Weight by confidence score
 - [ ] ML model retraining from labels
 - [ ] Student violation dashboard
 
----
-
-**Built with ❤️ by BLACKBOXAI** | Last Updated: April 2026
+---\n\n## 🛠️ Installing Face Recognition (Recommended for Accurate Identity Verification)\n\n**face_recognition library improves face matching accuracy over OpenCV fallback.**\n\n### Windows 11 Prerequisites:\n1. Install **CMake**: Download from https://cmake.org/download/ → Add to PATH.\n2. Install **Visual Studio Build Tools**:\n   - Download: https://visualstudio.microsoft.com/visual-cpp-build-tools/\n   - Select "C++ build tools" workload → Install (5-10GB, includes MSVC compiler for dlib).\n3. Restart terminal/VSCode.\n\n### Install:\n```bash\npip install -r requirements.txt\n```\n\n**Verify**: Run `python -c \"import face_recognition; print('Success!')\"` → No fallback message in app.\n\n**Fallback**: OpenCV still works if face_recognition fails.\n\n---\n\n**Built with ❤️ by BLACKBOXAI** | Last Updated: April 2026\n
